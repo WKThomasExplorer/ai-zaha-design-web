@@ -53,9 +53,13 @@ export default function HomeDesignPage() {
       const imageBase64 = uploadedImage.preview;
       setProgress(40);
 
+      const token = localStorage.getItem('auth_token');
       const effectResponse = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           imageBase64,
           description: descText,
@@ -90,9 +94,13 @@ export default function HomeDesignPage() {
     try {
       setProgress(20);
 
+      const token = localStorage.getItem('auth_token');
       const explosionResponse = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           effectImageUrl: effectImageUrl,
           description: EXPLOSION_PROMPT,
@@ -118,9 +126,13 @@ export default function HomeDesignPage() {
       ];
 
       try {
+        const token = localStorage.getItem('auth_token');
         const analyzeResponse = await fetch('/api/analyze', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             imageUrl: explosionData.imageUrl,
           }),

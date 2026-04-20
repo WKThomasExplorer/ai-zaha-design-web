@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDb } from '@/storage/database/db';
+import { blogPosts } from '@/storage/database/shared/schema';
+import { desc } from 'drizzle-orm';
 
 // Seed data for existing articles
 const SEED_ARTICLES = [
@@ -62,8 +64,6 @@ A material list isn't just a piece of paper—it's your renovation budget's best
 
 // GET - Fetch all articles or seed data
 export async function GET(request: NextRequest) {
-  const client = getSupabaseClient();
-
   // Check if this is a seed request
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
@@ -71,17 +71,13 @@ export async function GET(request: NextRequest) {
   if (action === 'seed') {
     // Seed the database with initial articles
     try {
-      // Check if articles already exist
-      const { data: existing } = await client.from('blog_posts').select('id').limit(1);
-      if (existing && existing.length > 0) {
+      const db = getDb();
+      const existing = await db.select({ id: blogPosts.id }).from(blogPosts).limit(1);
+      if (existing.length > 0) {
         return NextResponse.json({ success: true, message: 'Articles already seeded' });
       }
 
-      // Insert seed articles
-      const { error } = await client.from('blog_posts').insert(SEED_ARTICLES);
-      if (error) {
-        throw new Error(`Seed failed: ${error.message}`);
-      }
+      await db.insert(blogPosts).values(SEED_ARTICLES);
 
       return NextResponse.json({ success: true, message: 'Articles seeded successfully', count: SEED_ARTICLES.length });
     } catch (err) {
@@ -95,16 +91,13 @@ export async function GET(request: NextRequest) {
 
   // Fetch all articles ordered by created_at desc
   try {
-    const { data, error } = await client
-      .from('blog_posts')
-      .select('id, title, summary, created_at')
-      .order('created_at', { ascending: false });
+    const db = getDb();
+    const articles = await db
+      .select({ id: blogPosts.id, title: blogPosts.title, summary: blogPosts.summary, created_at: blogPosts.created_at })
+      .from(blogPosts)
+      .orderBy(desc(blogPosts.created_at));
 
-    if (error) {
-      throw new Error(`Fetch failed: ${error.message}`);
-    }
-
-    return NextResponse.json({ success: true, articles: data });
+    return NextResponse.json({ success: true, articles });
   } catch (err) {
     console.error('Fetch error:', err);
     return NextResponse.json(

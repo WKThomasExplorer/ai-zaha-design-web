@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { getDb } from '@/storage/database/db';
+import { generationMaterials, generationRuns } from '@/storage/database/shared/schema';
+import { and, desc, eq } from 'drizzle-orm';
+
+type Material = { layer: string; material: string; description?: string };
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,15 +73,44 @@ Please respond ONLY with valid JSON, no other text.`
       temperature: 0.3
     });
 
-    // Parse the JSON response
-    let materials = [];
+    let materials: Material[] = [];
     try {
-      const parsed = JSON.parse(response.content);
-      materials = parsed.materials || [];
+      const parsed = JSON.parse(response.content) as { materials?: Material[] };
+      materials = Array.isArray(parsed.materials) ? parsed.materials : [];
     } catch (parseError) {
       // If JSON parsing fails, try to extract material info from text
       console.error('JSON parse error:', parseError);
       materials = extractMaterialsFromText(response.content);
+    }
+
+    try {
+      const db = getDb();
+      const runRows = await db
+        .select({ id: generationRuns.id })
+        .from(generationRuns)
+        .where(and(eq(generationRuns.type, 'explosion'), eq(generationRuns.result_image_url, imageUrl)))
+        .orderBy(desc(generationRuns.created_at))
+        .limit(1);
+
+      const runId = runRows[0]?.id;
+      if (runId) {
+        await db.delete(generationMaterials).where(eq(generationMaterials.run_id, runId));
+
+        const values = materials
+          .filter((m) => Boolean(m.layer || m.material))
+          .map((m) => ({
+            run_id: runId,
+            layer: String(m.layer || ''),
+            material: String(m.material || ''),
+            description: m.description ? String(m.description) : null,
+          }));
+
+        if (values.length > 0) {
+          await db.insert(generationMaterials).values(values);
+        }
+      }
+    } catch (e) {
+      console.error('Material persistence error:', e);
     }
 
     return NextResponse.json({
@@ -105,7 +139,7 @@ Please respond ONLY with valid JSON, no other text.`
 }
 
 // Helper function to extract materials from text if JSON parsing fails
-function extractMaterialsFromText(text: string): Array<{layer: string, material: string, description: string}> {
+function extractMaterialsFromText(text: string): Material[] {
   const defaultMaterials = [
     { layer: 'Roof', material: 'Metal tiles', description: 'Durable weather-resistant roofing' },
     { layer: 'Waterproof', material: 'Modified bitumen', description: 'Waterproofing membrane' },

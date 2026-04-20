@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDb } from '@/storage/database/db';
+import { blogPosts } from '@/storage/database/shared/schema';
+import { desc } from 'drizzle-orm';
 
 // Article generation prompt
 const NEW_ARTICLE_PROMPT = `Write a blog article (400-500 words) about how the combination of effect renders and explosion diagrams creates the ultimate renovation planning tool.
@@ -40,25 +42,22 @@ export async function POST(request: NextRequest) {
     const content = response.content;
 
     // Save to database
-    const dbClient = getSupabaseClient();
-
-    const { data, error } = await dbClient
-      .from('blog_posts')
-      .insert({
+    const db = getDb();
+    const inserted = await db
+      .insert(blogPosts)
+      .values({
         title: NEW_ARTICLE.title,
         summary: NEW_ARTICLE.summary,
         content: content,
       })
-      .select()
-      .single();
+      .returning();
 
-    if (error) {
-      throw new Error(`Database insert failed: ${error.message}`);
-    }
+    const article = inserted[0];
+    if (!article) throw new Error('Database insert failed');
 
     return NextResponse.json({
       success: true,
-      article: data,
+      article,
       message: 'Article generated and saved successfully',
     });
 
@@ -74,16 +73,11 @@ export async function POST(request: NextRequest) {
 // Get all generated articles (for admin viewing)
 export async function GET() {
   try {
-    const dbClient = getSupabaseClient();
-
-    const { data, error } = await dbClient
-      .from('blog_posts')
-      .select('id, title, summary, created_at')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Fetch failed: ${error.message}`);
-    }
+    const db = getDb();
+    const data = await db
+      .select({ id: blogPosts.id, title: blogPosts.title, summary: blogPosts.summary, created_at: blogPosts.created_at })
+      .from(blogPosts)
+      .orderBy(desc(blogPosts.created_at));
 
     return NextResponse.json({
       success: true,

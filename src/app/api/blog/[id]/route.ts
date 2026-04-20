@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDb } from '@/storage/database/db';
+import { blogPosts } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 
 // GET - Fetch single article by ID
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const client = getSupabaseClient();
   const { id } = await params;
   const articleId = parseInt(id, 10);
 
@@ -18,24 +19,18 @@ export async function GET(
   }
 
   try {
-    const { data, error } = await client
-      .from('blog_posts')
-      .select('*')
-      .eq('id', articleId)
-      .maybeSingle();
+    const db = getDb();
+    const rows = await db.select().from(blogPosts).where(eq(blogPosts.id, articleId)).limit(1);
+    const article = rows[0];
 
-    if (error) {
-      throw new Error(`Fetch failed: ${error.message}`);
-    }
-
-    if (!data) {
+    if (!article) {
       return NextResponse.json(
         { success: false, error: 'Article not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, article: data });
+    return NextResponse.json({ success: true, article });
   } catch (err) {
     console.error('Fetch error:', err);
     return NextResponse.json(

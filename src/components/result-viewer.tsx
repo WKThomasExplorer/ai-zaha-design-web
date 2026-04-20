@@ -19,7 +19,12 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
   // Download single file
   const downloadFile = useCallback(async (url: string, filename: string) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(
+        `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+      );
+      if (!response.ok) {
+        throw new Error(`Download request failed with status ${response.status}`);
+      }
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

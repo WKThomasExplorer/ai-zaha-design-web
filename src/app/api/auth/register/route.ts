@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDb } from '@/storage/database/db';
+import { users } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 import { signToken } from '@/lib/jwt';
 
 const SALT_ROUNDS = 10;
@@ -33,14 +35,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists
-    const client = getSupabaseClient();
-    const { data: existingUser } = await client
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .maybeSingle();
+    const db = getDb();
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
 
-    if (existingUser) {
+    if (existing.length > 0) {
       return NextResponse.json(
         { success: false, error: 'Username already exists' },
         { status: 409 }
@@ -51,18 +53,16 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Insert new user
-    const { data: newUser, error } = await client
-      .from('users')
-      .insert({
+    const inserted = await db
+      .insert(users)
+      .values({
         username,
         password: hashedPassword,
       })
-      .select('id, username')
-      .single();
+      .returning({ id: users.id, username: users.username });
 
-    if (error || !newUser) {
-      throw new Error(error?.message || 'Failed to create user');
-    }
+    const newUser = inserted[0];
+    if (!newUser) throw new Error('Failed to create user');
 
     // Generate JWT token
     const token = signToken({
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       username: newUser.username,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       token,
       user: {
@@ -78,7 +78,18 @@ export async function POST(request: NextRequest) {
         username: newUser.username,
       },
     });
-  } catch (err) {
+
+    // Set cookie for middleware (7 days)
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
+
+    return response;
+  } catch (err: any) {
     console.error('Register error:', err);
     return NextResponse.json(
       { success: false, error: 'Registration failed' },

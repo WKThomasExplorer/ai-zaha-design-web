@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getDb } from '@/storage/database/db';
+import { users } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 import { signToken } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
@@ -17,14 +19,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by username
-    const client = getSupabaseClient();
-    const { data: user, error } = await client
-      .from('users')
-      .select('id, username, password')
-      .eq('username', username)
-      .maybeSingle();
+    const db = getDb();
+    const rows = await db
+      .select({ id: users.id, username: users.username, password: users.password })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
 
-    if (error || !user) {
+    const user = rows[0];
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Invalid username or password' },
         { status: 401 }
@@ -46,7 +49,7 @@ export async function POST(request: NextRequest) {
       username: user.username,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       token,
       user: {
@@ -54,6 +57,17 @@ export async function POST(request: NextRequest) {
         username: user.username,
       },
     });
+
+    // Set cookie for middleware (7 days)
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
+
+    return response;
   } catch (err) {
     console.error('Login error:', err);
     return NextResponse.json(
