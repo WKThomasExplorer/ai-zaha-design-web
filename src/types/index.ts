@@ -71,8 +71,8 @@ export interface GenerateExplosionResponse {
   error?: string;
 }
 
-// Style gallery presets - 50 templates organized by category
-export const STYLE_CATEGORIES = [
+// Legacy style gallery presets - 50 templates organized by category
+const LEGACY_STYLE_CATEGORIES = [
   'Modern Houses',
   'Commercial Streets',
   'Industrial Renovation',
@@ -80,7 +80,54 @@ export const STYLE_CATEGORIES = [
   'Avant-garde Design',
 ];
 
+export const STYLE_CATEGORIES = ['Curated Styles'];
+
 export const STYLE_PRESETS: StyleReference[] = [
+  {
+    id: '1',
+    name: '1. Modern Farmhouse',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Modern farmhouse facade renovation: white board-and-batten siding, black metal window frames, natural wood porch columns, subtle standing-seam metal roof accents, clean landscaping, warm welcoming curb appeal. Golden hour, photorealistic architectural photography, high detail.',
+  },
+  {
+    id: '2',
+    name: '2. Japanese Zen',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Japanese zen modern facade renovation: dark horizontal wood slats, exposed concrete accents, minimal entry canopy, low and calm composition, restrained landscaping with gravel and stones. Soft daylight, serene atmosphere, photorealistic, high detail.',
+  },
+  {
+    id: '3',
+    name: '3. Coastal Hamptons',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Coastal Hamptons facade renovation: white cedar shingle siding, crisp white trim and shutters, navy front door, wide porch with white columns, hydrangea landscaping, bright airy feel. Bright afternoon light, photorealistic architectural photography, high detail.',
+  },
+  {
+    id: '4',
+    name: '4. Scandinavian Minimal',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Scandinavian minimalist facade renovation: soft light grey and warm white surfaces, clean lines, warm natural wood entry detail, large clear glazing, minimal landscaping. Overcast soft daylight, calm premium vibe, photorealistic, high detail.',
+  },
+  {
+    id: '5',
+    name: '5. Mediterranean Revival',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Mediterranean revival facade renovation: warm creamy stucco walls, terracotta barrel tile roof, arched entry details, wrought iron accents, stone base highlights, lush landscaping. Golden hour, photorealistic, high detail.',
+  },
+  {
+    id: '6',
+    name: '6. Industrial Loft',
+    category: 'Curated Styles',
+    prompt:
+      'Maintain the original building silhouette and camera angle. Industrial loft facade renovation: dark grey concrete texture, exposed brick accents, black steel canopy, asymmetrical facade composition, large black framed windows. Moody overcast light, high contrast, photorealistic, high detail.',
+  },
+];
+
+const LEGACY_STYLE_PRESETS: StyleReference[] = [
   // 🏡 一、 现代住宅与别墅改造 (1-10)
   {
     id: '1',

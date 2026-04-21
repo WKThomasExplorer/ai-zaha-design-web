@@ -15,7 +15,7 @@ interface DescriptionInputProps {
 export function DescriptionInput({ onSubmit, className }: DescriptionInputProps) {
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Modern Houses']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Curated Styles']);
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -80,7 +80,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-[#1a1f36]">
           <Sparkles className="w-4 h-4 text-[#00d4aa]" />
-          <span className="text-sm font-medium">Choose a style template (50 options)</span>
+          <span className="text-sm font-medium">Choose a style template (6 options)</span>
         </div>
 
         {/* Category Accordion */}

@@ -337,14 +337,14 @@ export default function HomeDesignPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] relative overflow-hidden">
-      {/* Background Decorations */}
-      <div className="curve-decoration -top-20 -left-20" />
-      <div className="curve-decoration top-1/2 -right-40 w-[500px] h-[500px]" />
-      <div className="curve-decoration bottom-20 left-1/3" />
+    <div className="min-h-screen zaha-liquid-bg relative overflow-hidden">
+      <div className="curve-decoration -top-24 -left-24 bg-gradient-to-br from-[#00d4aa]/20 to-transparent" />
+      <div className="curve-decoration top-1/4 -right-40 w-[640px] h-[640px] bg-gradient-to-bl from-[#0077ff]/12 to-transparent opacity-60" />
+      <div className="curve-decoration bottom-16 left-1/3 w-[420px] h-[420px] bg-gradient-to-tr from-[#8b5cf6]/10 to-transparent opacity-40" />
+      <div className="curve-decoration top-1/2 left-0 w-[520px] h-[520px] bg-gradient-to-r from-[#00d4aa]/8 to-transparent blur-[90px]" />
 
       {/* Header */}
-      <header className="relative z-20 border-b border-[#2d2a4a]/10 bg-white/80 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-50 zaha-glass border-b border-white/10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -527,33 +527,31 @@ export default function HomeDesignPage() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
         {/* Intro Section (only show in IDLE state) */}
         {appState === 'IDLE' && (
-          <div className="mb-12 animate-in fade-in duration-500">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-              <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#00d4aa]/10 to-[#0077ff]/10 text-sm text-[#2d2a4a] mb-6">
+          <div className="mb-16 sm:mb-20 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full zaha-glass text-sm text-[#2d2a4a]">
                   <Sparkles className="w-4 h-4 text-[#00d4aa]" />
-                  <span>No sign up · 30-second preview · Pay only if you love it</span>
+                  <span className="font-medium">No sign up · 30-second preview · Pay only if you love it</span>
                 </div>
 
-                <h2 className="text-4xl sm:text-5xl font-bold text-[#1a1f36] leading-[1.05]">
+                <h2 className="text-5xl sm:text-6xl font-bold text-[#1a1f36] leading-[0.98] tracking-tight">
                   Make Your Home
                   <br />
-                  <span className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] bg-clip-text text-transparent">
-                    the Only One on the Block
-                  </span>
+                  <span className="zaha-text-gradient">the Only One on the Block</span>
                 </h2>
 
-                <p className="mt-5 text-base sm:text-lg text-[#2d2a4a]/70 max-w-xl">
+                <p className="text-base sm:text-lg text-[#2d2a4a]/70 max-w-xl leading-relaxed">
                   Upload a photo, choose a style, and get a professional facade redesign preview in under 30 seconds.
                 </p>
 
-                <div className="mt-7 flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={scrollToGenerator}
-                    className="h-12 px-6 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white"
+                    className="h-12 sm:h-14 px-7 sm:px-8 rounded-full font-semibold transition-all duration-500 bg-gradient-to-r from-[#1a1f36] to-[#2d2a4a] hover:shadow-[0_0_30px_rgba(0,212,170,0.25)] text-white"
                   >
                     Try Free — No Sign Up
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -561,28 +559,28 @@ export default function HomeDesignPage() {
                   <Button
                     onClick={scrollToSocialProof}
                     variant="outline"
-                    className="h-12 px-6 rounded-xl font-medium border-[#2d2a4a]/20 text-[#2d2a4a] hover:bg-[#f0f0f5]"
+                    className="h-12 sm:h-14 px-7 sm:px-8 rounded-full font-semibold border-[#1a1f36]/15 text-[#1a1f36] bg-white/50 hover:bg-white/70"
                   >
                     See Real Transformations
                   </Button>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                <div className="flex flex-wrap gap-2">
+                  <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
                     Works best with a straight-on front photo
                   </div>
-                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                  <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
                     No subscription
                   </div>
-                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                  <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
                     Instant download after unlock
                   </div>
                 </div>
               </div>
 
               <div className="relative">
-                <div className="absolute -inset-4 rounded-[32px] bg-gradient-to-r from-[#00d4aa]/20 to-[#0077ff]/20 blur-2xl" />
-                <div className="relative rounded-3xl bg-white border border-[#2d2a4a]/10 shadow-xl shadow-[#1a1f36]/5 overflow-hidden">
+                <div className="absolute -inset-8 rounded-full bg-gradient-to-r from-[#00d4aa]/25 to-[#0077ff]/25 blur-[80px] opacity-70" />
+                <div className="relative rounded-[40px] zaha-glass border border-white/50 shadow-2xl overflow-hidden">
                   <Carousel
                     setApi={setHeroCarouselApi}
                     opts={{ loop: true, align: 'start' }}
@@ -591,10 +589,12 @@ export default function HomeDesignPage() {
                     <CarouselContent>
                       {heroSlides.map((slide, idx) => (
                         <CarouselItem key={slide.label}>
-                          <div className="p-4 sm:p-5">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="text-sm font-semibold text-[#1a1f36]">{slide.label}</div>
-                              <div className="text-xs text-[#2d2a4a]/60">Before / After</div>
+                          <div className="p-5 sm:p-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="text-sm font-semibold text-[#1a1f36] tracking-tight">{slide.label}</div>
+                              <div className="text-[10px] font-semibold uppercase tracking-widest text-[#2d2a4a]/60">
+                                Before / After
+                              </div>
                             </div>
                             <BeforeAfterCard
                               beforeSrc={buildHeroImage(slide.beforePrompt)}
@@ -615,20 +615,19 @@ export default function HomeDesignPage() {
         )}
 
         {appState === 'IDLE' && (
-          <section id="social-proof" className="mb-12">
-            <div className="flex items-end justify-between gap-6 mb-6">
-              <div>
-                <h3 className="text-2xl font-bold text-[#1a1f36]">Real Transformations</h3>
-                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+          <section id="social-proof" className="mb-16 sm:mb-20">
+            <div className="flex items-end justify-between gap-6 mb-8">
+              <div className="space-y-2">
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">Real Transformations</h3>
+                <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
+                <p className="text-sm sm:text-base text-[#2d2a4a]/60">
                   A few examples of what you can get in under 30 seconds.
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">
-                Before / After examples
-              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">Before / After examples</div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <SocialProofCard
                 title="Modern Farmhouse"
                 subtitle="Austin, TX"
@@ -658,18 +657,19 @@ export default function HomeDesignPage() {
         )}
 
         {appState === 'IDLE' && (
-          <section id="styles" className="mb-12">
-            <div className="flex items-end justify-between gap-6 mb-6">
-              <div>
-                <h3 className="text-2xl font-bold text-[#1a1f36]">Pick a Look</h3>
-                <p className="text-sm text-[#2d2a4a]/60 mt-1">
-                  Choose a style to prefill your prompt, then upload your photo.
+          <section id="styles" className="mb-16 sm:mb-20">
+            <div className="flex items-end justify-between gap-6 mb-8">
+              <div className="space-y-2">
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">Parametric Presets</h3>
+                <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
+                <p className="text-sm sm:text-base text-[#2d2a4a]/60">
+                  Pick a style DNA to prefill your prompt, then upload your photo.
                 </p>
               </div>
               <div className="hidden sm:block text-xs text-[#2d2a4a]/50">6 curated styles</div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {styleShowcaseCards.map((style) => (
                 <StyleShowcaseCard
                   key={style.id}
@@ -684,18 +684,19 @@ export default function HomeDesignPage() {
         )}
 
         {appState === 'IDLE' && (
-          <section id="how-it-works" className="mb-12">
-            <div className="flex items-end justify-between gap-6 mb-6">
-              <div>
-                <h3 className="text-2xl font-bold text-[#1a1f36]">How it works</h3>
-                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+          <section id="how-it-works" className="mb-16 sm:mb-20">
+            <div className="flex items-end justify-between gap-6 mb-8">
+              <div className="space-y-2">
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">How it works</h3>
+                <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
+                <p className="text-sm sm:text-base text-[#2d2a4a]/60">
                   Upload → Choose style → Get your redesign.
                 </p>
               </div>
               <div className="hidden sm:block text-xs text-[#2d2a4a]/50">3 simple steps</div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <HowItWorksStep
                 step={1}
                 icon={<Upload className="w-6 h-6" />}
@@ -770,8 +771,10 @@ export default function HomeDesignPage() {
         )}
 
         {/* Main Card */}
-        <div id="generator" className="bg-white rounded-3xl shadow-xl shadow-[#1a1f36]/5 border border-[#2d2a4a]/10 overflow-hidden">
-          <div className="p-6 sm:p-8">
+        <div id="generator" className="relative">
+          <div className="absolute -inset-1 rounded-[44px] bg-gradient-to-r from-[#00d4aa]/20 to-[#0077ff]/20 blur-xl opacity-60" />
+          <div className="relative zaha-glass rounded-[44px] zaha-fluid-shadow border border-white/50 overflow-hidden">
+            <div className="p-7 sm:p-10">
             {/* IDLE & UPLOADED - Show image uploader + description */}
             {(appState === 'IDLE' || appState === 'UPLOADED') && (
               <div className="space-y-6">
@@ -857,6 +860,7 @@ export default function HomeDesignPage() {
                 </button>
               </div>
             )}
+            </div>
           </div>
         </div>
 
@@ -891,7 +895,7 @@ export default function HomeDesignPage() {
                 </svg>
               }
               title="Choose Style"
-              description="Select from 50 professional templates or describe your own vision."
+              description="Select from 6 curated templates or describe your own vision."
             />
             <FeatureCard
               icon={
@@ -967,7 +971,7 @@ export default function HomeDesignPage() {
               <div className="hidden sm:block text-xs text-[#2d2a4a]/50">Always optional</div>
             </div>
 
-            <div className="rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden">
+            <div className="rounded-[28px] zaha-glass border border-white/40 overflow-hidden">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="q1" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
@@ -1227,7 +1231,7 @@ function TrustPill({
   label: string;
 }) {
   return (
-    <div className="h-12 rounded-xl bg-white border border-[#2d2a4a]/10 shadow-sm px-4 flex items-center gap-2 text-sm text-[#2d2a4a]/70">
+    <div className="h-12 rounded-2xl zaha-glass border border-white/40 px-4 flex items-center gap-2 text-sm text-[#2d2a4a]/70">
       <span className="text-[#00d4aa]">{icon}</span>
       <span className="truncate">{label}</span>
     </div>
@@ -1254,10 +1258,10 @@ function PricingCard({
   return (
     <div
       className={cn(
-        'rounded-2xl bg-white border shadow-sm overflow-hidden',
+        'rounded-[28px] zaha-glass border overflow-hidden zaha-card-hover',
         emphasized
           ? 'border-[#00d4aa]/40 shadow-lg shadow-[#00d4aa]/10'
-          : 'border-[#2d2a4a]/10'
+          : 'border-white/40'
       )}
     >
       <div className="p-6">
@@ -1321,7 +1325,7 @@ function SocialProofCard({
   afterSrc: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden">
+    <div className="rounded-[28px] zaha-glass border border-white/40 overflow-hidden zaha-card-hover">
       <div className="p-5">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
@@ -1383,29 +1387,28 @@ function StyleShowcaseCard({
       type="button"
       onClick={onPick}
       className={cn(
-        'group rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden text-left transition-all duration-300',
-        'hover:border-[#00d4aa]/30 hover:shadow-lg hover:shadow-[#00d4aa]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/50'
+        'group relative rounded-[32px] bg-white border border-[#2d2a4a]/10 overflow-hidden text-left zaha-card-hover',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/50'
       )}
       aria-label={`Pick ${title} style`}
     >
-      <div className="relative aspect-[4/3] bg-[#fafbfc]">
+      <div className="relative aspect-[4/5] bg-[#fafbfc]">
         <Image
           src={imageSrc}
           alt={title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          className="object-cover transition-transform duration-700 group-hover:scale-[1.1]"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-        <div className="absolute left-4 bottom-4 right-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-base font-semibold text-white leading-tight">{title}</div>
-              <div className="text-xs text-white/80 mt-1 line-clamp-2">{description}</div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#1a1f36]/90 via-[#1a1f36]/20 to-transparent opacity-70 group-hover:opacity-90 transition-opacity" />
+        <div className="absolute left-6 bottom-6 right-6 translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-xl font-bold text-white tracking-tight">{title}</div>
+              <div className="text-xs text-white/70 mt-2 line-clamp-2 leading-relaxed">{description}</div>
             </div>
-            <div className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
-              Try
-              <ChevronRight className="w-4 h-4" />
+            <div className="shrink-0 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-3 group-hover:translate-x-0">
+              <ChevronRight className="w-5 h-5" />
             </div>
           </div>
         </div>
@@ -1426,10 +1429,10 @@ function HowItWorksStep({
   description: string;
 }) {
   return (
-    <div className="relative rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm p-6">
+    <div className="relative rounded-[28px] zaha-glass border border-white/40 p-6 zaha-card-hover">
       <div className="flex items-start gap-4">
         <div className="shrink-0">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa]/15 to-[#0077ff]/15 flex items-center justify-center text-[#00d4aa]">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00d4aa]/18 to-[#0077ff]/18 flex items-center justify-center text-[#00d4aa]">
             {icon}
           </div>
         </div>
@@ -1516,8 +1519,8 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="p-6 rounded-2xl bg-white border border-[#2d2a4a]/10 hover:border-[#00d4aa]/30 hover:shadow-lg hover:shadow-[#00d4aa]/5 transition-all duration-300">
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa]/10 to-[#0077ff]/10 flex items-center justify-center text-[#00d4aa] mb-4">
+    <div className="p-6 rounded-[28px] zaha-glass border border-white/40 zaha-card-hover">
+      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#00d4aa]/16 to-[#0077ff]/16 flex items-center justify-center text-[#00d4aa] mb-4">
         {icon}
       </div>
       <h3 className="text-lg font-semibold text-[#1a1f36] mb-2">{title}</h3>
