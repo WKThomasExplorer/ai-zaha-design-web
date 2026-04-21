@@ -19,6 +19,22 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  useEffect(() => {
+    const handlePrefill = (event: Event) => {
+      const customEvent = event as CustomEvent<{ value?: string }>;
+      const nextValue = customEvent.detail?.value;
+      if (!nextValue || typeof nextValue !== 'string') return;
+      setSelectedStyleId(null);
+      setValue(nextValue);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    };
+
+    window.addEventListener('prefillDescription', handlePrefill);
+    return () => window.removeEventListener('prefillDescription', handlePrefill);
+  }, []);
+
   // Auto-scroll textarea to bottom when value changes
   useEffect(() => {
     if (textareaRef.current) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -148,13 +149,12 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
 
       {/* Image Display */}
       <div className="relative rounded-2xl overflow-hidden bg-[#fafbfc] border border-[#2d2a4a]/10">
-        <img
-          src={
-            activeTab === 'effect'
-              ? result.effectImageUrl
-              : result.explosionImageUrl
-          }
+        <Image
+          src={activeTab === 'effect' ? result.effectImageUrl : result.explosionImageUrl}
           alt={activeTab === 'effect' ? 'Facade effect' : 'Explosion diagram'}
+          width={1600}
+          height={900}
+          sizes="(max-width: 1024px) 100vw, 720px"
           className="w-full h-auto"
         />
       </div>

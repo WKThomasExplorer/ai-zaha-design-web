@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Upload, X, AlertCircle, Lock, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -191,11 +192,16 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
         </div>
       ) : (
         <div className="relative rounded-2xl overflow-hidden bg-[#fafbfc] border border-[#2d2a4a]/10">
-          <img
-            src={preview}
-            alt="Uploaded facade"
-            className="w-full h-auto max-h-[400px] object-contain"
-          />
+          <div className="relative w-full max-h-[400px] aspect-[4/3]">
+            <Image
+              src={preview}
+              alt="Uploaded facade"
+              fill
+              sizes="(max-width: 1024px) 100vw, 720px"
+              className="object-contain"
+              unoptimized
+            />
+          </div>
           <button
             onClick={handleRemove}
             className="absolute top-3 right-3 w-10 h-10 rounded-full bg-[#1a1f36]/80 backdrop-blur-sm flex items-center justify-center hover:bg-[#1a1f36] transition-colors"

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useCallback, useEffect } from 'react';
-import { Sparkles, Home, Globe, ChevronRight, CheckCircle2, ArrowRight, RotateCcw, User, LogOut } from 'lucide-react';
+import { Sparkles, Home, Globe, ChevronRight, CheckCircle2, ArrowRight, RotateCcw, User, LogOut, Upload, Palette, Wand2, Menu, Check, Star, Shield, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ImageUploader } from '@/components/image-upload';
@@ -11,6 +11,10 @@ import { LoadingState } from '@/components/loading-state';
 import { ResultViewer } from '@/components/result-viewer';
 import { useAuth } from '@/context/auth-context';
 import type { UploadedImage, GenerationResult } from '@/types';
+import Image from 'next/image';
+import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 type AppState = 
   | 'IDLE' 
@@ -33,6 +37,141 @@ export default function HomeDesignPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState('en');
+  const [heroCarouselApi, setHeroCarouselApi] = useState<CarouselApi | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const heroSlides = [
+    {
+      label: 'Modern Farmhouse',
+      beforePrompt:
+        'front view photo of a typical american suburban two story house, neutral exterior, daylight, real estate photography, high detail',
+      afterPrompt:
+        'modern farmhouse home facade renovation, white board and batten siding, black metal window frames, natural wood porch, standing seam metal roof accents, warm welcoming, golden hour, photorealistic, high detail',
+    },
+    {
+      label: 'Japanese Zen',
+      beforePrompt:
+        'front view photo of a typical american suburban house exterior, daylight, neutral facade, real estate photography, high detail',
+      afterPrompt:
+        'japanese zen modern home facade renovation, dark horizontal wood slats, exposed concrete accents, minimal landscaping, low horizontal lines, calm atmosphere, soft daylight, photorealistic, high detail',
+    },
+    {
+      label: 'Coastal Hamptons',
+      beforePrompt:
+        'front view photo of a typical american coastal house exterior, daylight, neutral facade, real estate photography, high detail',
+      afterPrompt:
+        'coastal hamptons style home facade renovation, white cedar shingle siding, white shutters, navy blue front door, wide porch with white columns, hydrangea landscaping, bright afternoon light, photorealistic, high detail',
+    },
+  ] as const;
+
+  const styleShowcaseCards = [
+    {
+      id: 'modern-farmhouse',
+      name: 'Modern Farmhouse',
+      description: 'Bright, warm curb appeal that feels instantly premium for suburban homes.',
+      prompt:
+        'modern farmhouse home facade renovation, white board and batten siding, black metal window frames, natural wood porch, standing seam metal roof accents, warm welcoming, golden hour, photorealistic, high detail',
+      imagePrompt:
+        'modern farmhouse home facade renovation, white board and batten siding, black metal window frames, natural wood porch, standing seam metal roof accents, warm welcoming, golden hour, photorealistic, high detail',
+    },
+    {
+      id: 'japanese-zen',
+      name: 'Japanese Zen',
+      description: 'Clean lines, calm materials, and a minimalist entry that feels expensive.',
+      prompt:
+        'japanese zen modern home facade renovation, dark horizontal wood slats, exposed concrete accents, minimal landscaping, low horizontal lines, calm atmosphere, soft daylight, photorealistic, high detail',
+      imagePrompt:
+        'japanese zen modern home facade renovation, dark horizontal wood slats, exposed concrete accents, minimal landscaping, low horizontal lines, calm atmosphere, soft daylight, photorealistic, high detail',
+    },
+    {
+      id: 'coastal-hamptons',
+      name: 'Coastal Hamptons',
+      description: 'Light, airy, and timeless—perfect for coastal or bright-sun neighborhoods.',
+      prompt:
+        'coastal hamptons style home facade renovation, white cedar shingle siding, white shutters, navy blue front door, wide porch with white columns, hydrangea landscaping, bright afternoon light, photorealistic, high detail',
+      imagePrompt:
+        'coastal hamptons style home facade renovation, white cedar shingle siding, white shutters, navy blue front door, wide porch with white columns, hydrangea landscaping, bright afternoon light, photorealistic, high detail',
+    },
+    {
+      id: 'scandinavian-minimal',
+      name: 'Scandinavian Minimal',
+      description: 'Soft neutrals + warm wood details for a modern, sellable exterior upgrade.',
+      prompt:
+        'scandinavian minimalist home facade renovation, light grey and white exterior, large floor to ceiling glass, flat or low slope roof, warm natural wood entry detail, clean landscaping, soft overcast daylight, photorealistic, high detail',
+      imagePrompt:
+        'scandinavian minimalist home facade renovation, light grey and white exterior, large floor to ceiling glass, flat or low slope roof, warm natural wood entry detail, clean landscaping, soft overcast daylight, photorealistic, high detail',
+    },
+    {
+      id: 'mediterranean-revival',
+      name: 'Mediterranean Revival',
+      description: 'Arches, stucco, and terracotta tones that make older homes feel refreshed.',
+      prompt:
+        'mediterranean revival home facade renovation, terracotta barrel tile roof, warm creamy stucco walls, arched entry, wrought iron details, stone accents, lush landscaping, golden hour, photorealistic, high detail',
+      imagePrompt:
+        'mediterranean revival home facade renovation, terracotta barrel tile roof, warm creamy stucco walls, arched entry, wrought iron details, stone accents, lush landscaping, golden hour, photorealistic, high detail',
+    },
+    {
+      id: 'industrial-loft',
+      name: 'Industrial Loft',
+      description: 'Bold contrast and modern materials for urban-looking, statement facades.',
+      prompt:
+        'industrial loft style home facade renovation, dark grey concrete texture, exposed brick accents, black steel canopy, asymmetrical facade composition, large black framed windows, moody overcast light, photorealistic, high detail',
+      imagePrompt:
+        'industrial loft style home facade renovation, dark grey concrete texture, exposed brick accents, black steel canopy, asymmetrical facade composition, large black framed windows, moody overcast light, photorealistic, high detail',
+    },
+  ] as const;
+
+  const buildHeroImage = useCallback((prompt: string) => {
+    const encoded = encodeURIComponent(prompt);
+    return `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encoded}&image_size=landscape_16_9`;
+  }, []);
+
+  const buildSocialProofImage = useCallback((prompt: string) => {
+    const encoded = encodeURIComponent(prompt);
+    return `https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=${encoded}&image_size=landscape_4_3`;
+  }, []);
+
+  const scrollToGenerator = useCallback(() => {
+    document.getElementById('generator')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToSocialProof = useCallback(() => {
+    document.getElementById('social-proof')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToStyles = useCallback(() => {
+    document.getElementById('styles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToHowItWorks = useCallback(() => {
+    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToPricing = useCallback(() => {
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const scrollToFaq = useCallback(() => {
+    document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const handleStyleShowcasePick = useCallback(
+    (prompt: string) => {
+      localStorage.setItem('design_description', prompt);
+      window.dispatchEvent(new CustomEvent('prefillDescription', { detail: { value: prompt } }));
+      scrollToGenerator();
+    },
+    [scrollToGenerator]
+  );
+
+  useEffect(() => {
+    if (!heroCarouselApi) return;
+    const intervalId = window.setInterval(() => {
+      heroCarouselApi.scrollNext();
+    }, 4500);
+
+    return () => window.clearInterval(intervalId);
+  }, [heroCarouselApi]);
 
   // Handle image upload
   const handleImageUploaded = useCallback((image: UploadedImage) => {
@@ -87,7 +226,6 @@ export default function HomeDesignPage() {
   const generateExplosionDiagram = useCallback(async () => {
     if (!effectImageUrl) return;
 
-    const descText = localStorage.getItem('design_description') || 'modern facade renovation';
     setAppState('GENERATING_EXPLOSION');
     setProgress(0);
 
@@ -206,7 +344,7 @@ export default function HomeDesignPage() {
       <div className="curve-decoration bottom-20 left-1/3" />
 
       {/* Header */}
-      <header className="relative z-10 border-b border-[#2d2a4a]/10 bg-white/80 backdrop-blur-md">
+      <header className="relative z-20 border-b border-[#2d2a4a]/10 bg-white/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -227,19 +365,31 @@ export default function HomeDesignPage() {
             </div>
 
             {/* Navigation Links */}
-            <div className="flex items-center gap-4">
-              <Link
-                href="/blog"
-                className="text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors flex items-center gap-1"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Facade Tips</span>
-              </Link>
-              
-              {/* Language Selector */}
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <nav aria-label="Primary" className="hidden lg:flex items-center gap-1">
+                <NavLink onClick={scrollToGenerator} label="Try Free" />
+                {appState === 'IDLE' && (
+                  <>
+                    <NavLink onClick={scrollToSocialProof} label="Transformations" />
+                    <NavLink onClick={scrollToStyles} label="Styles" />
+                    <NavLink onClick={scrollToHowItWorks} label="How it works" />
+                    <NavLink onClick={scrollToPricing} label="Pricing" />
+                    <NavLink onClick={scrollToFaq} label="FAQ" />
+                  </>
+                )}
+                <Link
+                  href="/blog"
+                  className="px-3 py-2 rounded-xl text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] hover:bg-[#2d2a4a]/5 transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Facade Tips</span>
+                </Link>
+              </nav>
+
+              <div className="hidden sm:flex items-center gap-2">
                 <Globe className="w-4 h-4 text-[#2d2a4a]/60" />
                 <select
+                  aria-label="Language"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="text-sm bg-transparent border-none focus:outline-none text-[#2d2a4a]/60 cursor-pointer"
@@ -252,9 +402,8 @@ export default function HomeDesignPage() {
                 </select>
               </div>
 
-              {/* Auth Section */}
               {!loading && (
-                <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
                   {user ? (
                     <>
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#00d4aa]/10">
@@ -265,6 +414,7 @@ export default function HomeDesignPage() {
                         onClick={logout}
                         className="p-2 rounded-lg hover:bg-[#2d2a4a]/5 transition-colors text-[#2d2a4a]/60 hover:text-red-500"
                         title="Logout"
+                        aria-label="Logout"
                       >
                         <LogOut className="w-4 h-4" />
                       </button>
@@ -285,32 +435,287 @@ export default function HomeDesignPage() {
                   )}
                 </div>
               )}
+
+              <div className="lg:hidden">
+                <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                  <SheetTrigger asChild>
+                    <button
+                      className="h-10 w-10 rounded-xl border border-[#2d2a4a]/10 bg-white hover:bg-[#2d2a4a]/5 transition-colors flex items-center justify-center"
+                      aria-label="Open menu"
+                    >
+                      <Menu className="w-5 h-5 text-[#2d2a4a]/70" />
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[320px] sm:w-[360px]">
+                    <SheetTitle className="text-[#1a1f36]">AI Zaha Home Design</SheetTitle>
+                    <div className="mt-6 space-y-2">
+                      <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToGenerator(); }} label="Try Free" />
+                      {appState === 'IDLE' && (
+                        <>
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToSocialProof(); }} label="Real Transformations" />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToStyles(); }} label="Styles" />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToHowItWorks(); }} label="How it works" />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToPricing(); }} label="Pricing" />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToFaq(); }} label="FAQ" />
+                        </>
+                      )}
+                      <Link href="/blog" onClick={() => setMobileNavOpen(false)} className="block">
+                        <div className="px-4 py-3 rounded-xl border border-[#2d2a4a]/10 hover:bg-[#2d2a4a]/5 transition-colors text-sm text-[#1a1f36] flex items-center justify-between">
+                          <span>Facade Tips</span>
+                          <ChevronRight className="w-4 h-4 text-[#2d2a4a]/50" />
+                        </div>
+                      </Link>
+                    </div>
+
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-[#2d2a4a]/60">
+                        <Globe className="w-4 h-4" />
+                        <span>Language</span>
+                      </div>
+                      <select
+                        aria-label="Language"
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-[#2d2a4a]/15 bg-white px-3 text-sm text-[#1a1f36] focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
+                      >
+                        <option value="en">English</option>
+                        <option value="zh">中文</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                      </select>
+                    </div>
+
+                    {!loading && (
+                      <div className="mt-6">
+                        {user ? (
+                          <div className="flex items-center justify-between rounded-xl border border-[#2d2a4a]/10 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-[#00d4aa]" />
+                              <span className="text-sm font-medium text-[#1a1f36]">{user.username}</span>
+                            </div>
+                            <button
+                              onClick={() => { setMobileNavOpen(false); logout(); }}
+                              className="p-2 rounded-lg hover:bg-[#2d2a4a]/5 transition-colors text-[#2d2a4a]/60 hover:text-red-500"
+                              aria-label="Logout"
+                            >
+                              <LogOut className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3">
+                            <Link href="/login" onClick={() => setMobileNavOpen(false)}>
+                              <Button variant="outline" className="w-full h-11 rounded-xl border-[#2d2a4a]/20">
+                                Login
+                              </Button>
+                            </Link>
+                            <Link href="/register" onClick={() => setMobileNavOpen(false)}>
+                              <Button className="w-full h-11 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white hover:opacity-90">
+                                Sign Up
+                              </Button>
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Intro Section (only show in IDLE state) */}
         {appState === 'IDLE' && (
-          <div className="text-center mb-12 animate-in fade-in duration-500">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#00d4aa]/10 to-[#0077ff]/10 text-sm text-[#2d2a4a] mb-6">
-              <Sparkles className="w-4 h-4 text-[#00d4aa]" />
-              <span>AI-powered facade design in seconds</span>
+          <div className="mb-12 animate-in fade-in duration-500">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#00d4aa]/10 to-[#0077ff]/10 text-sm text-[#2d2a4a] mb-6">
+                  <Sparkles className="w-4 h-4 text-[#00d4aa]" />
+                  <span>No sign up · 30-second preview · Pay only if you love it</span>
+                </div>
+
+                <h2 className="text-4xl sm:text-5xl font-bold text-[#1a1f36] leading-[1.05]">
+                  Make Your Home
+                  <br />
+                  <span className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] bg-clip-text text-transparent">
+                    the Only One on the Block
+                  </span>
+                </h2>
+
+                <p className="mt-5 text-base sm:text-lg text-[#2d2a4a]/70 max-w-xl">
+                  Upload a photo, choose a style, and get a professional facade redesign preview in under 30 seconds.
+                </p>
+
+                <div className="mt-7 flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={scrollToGenerator}
+                    className="h-12 px-6 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white"
+                  >
+                    Try Free — No Sign Up
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                  <Button
+                    onClick={scrollToSocialProof}
+                    variant="outline"
+                    className="h-12 px-6 rounded-xl font-medium border-[#2d2a4a]/20 text-[#2d2a4a] hover:bg-[#f0f0f5]"
+                  >
+                    See Real Transformations
+                  </Button>
+                </div>
+
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                    Works best with a straight-on front photo
+                  </div>
+                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                    No subscription
+                  </div>
+                  <div className="px-3 py-1.5 rounded-full bg-white border border-[#2d2a4a]/10 text-xs text-[#2d2a4a]/70">
+                    Instant download after unlock
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-[32px] bg-gradient-to-r from-[#00d4aa]/20 to-[#0077ff]/20 blur-2xl" />
+                <div className="relative rounded-3xl bg-white border border-[#2d2a4a]/10 shadow-xl shadow-[#1a1f36]/5 overflow-hidden">
+                  <Carousel
+                    setApi={setHeroCarouselApi}
+                    opts={{ loop: true, align: 'start' }}
+                    className="w-full"
+                  >
+                    <CarouselContent>
+                      {heroSlides.map((slide, idx) => (
+                        <CarouselItem key={slide.label}>
+                          <div className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-sm font-semibold text-[#1a1f36]">{slide.label}</div>
+                              <div className="text-xs text-[#2d2a4a]/60">Before / After</div>
+                            </div>
+                            <BeforeAfterCard
+                              beforeSrc={buildHeroImage(slide.beforePrompt)}
+                              afterSrc={buildHeroImage(slide.afterPrompt)}
+                              priority={idx === 0}
+                            />
+                          </div>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="left-3" />
+                    <CarouselNext className="right-3" />
+                  </Carousel>
+                </div>
+              </div>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1a1f36] mb-4">
-              Upload your facade,
-              <br />
-              <span className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] bg-clip-text text-transparent">
-                see the transformation
-              </span>
-            </h2>
-            <p className="text-[#2d2a4a]/60 max-w-xl mx-auto">
-              Tell us what you want, and our AI will generate stunning renovation
-              renders with detailed material specifications.
-            </p>
           </div>
+        )}
+
+        {appState === 'IDLE' && (
+          <section id="social-proof" className="mb-12">
+            <div className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">Real Transformations</h3>
+                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+                  A few examples of what you can get in under 30 seconds.
+                </p>
+              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">
+                Before / After examples
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <SocialProofCard
+                title="Modern Farmhouse"
+                subtitle="Austin, TX"
+                beforeSrc={buildSocialProofImage('front view photo of a typical american suburban two story house, neutral exterior, daylight, real estate photography, high detail')}
+                afterSrc={buildSocialProofImage('modern farmhouse home facade renovation, white board and batten siding, black metal window frames, natural wood porch, standing seam metal roof accents, warm welcoming, golden hour, photorealistic, high detail')}
+              />
+              <SocialProofCard
+                title="Scandinavian Minimal"
+                subtitle="Vancouver, BC"
+                beforeSrc={buildSocialProofImage('front view photo of a modern suburban house exterior, neutral facade, daylight, real estate photography, high detail')}
+                afterSrc={buildSocialProofImage('scandinavian minimalist home facade renovation, light grey and white exterior, large floor to ceiling glass, flat or low slope roof, warm natural wood entry detail, clean landscaping, soft overcast daylight, photorealistic, high detail')}
+              />
+              <SocialProofCard
+                title="Mediterranean Revival"
+                subtitle="San Diego, CA"
+                beforeSrc={buildSocialProofImage('front view photo of a typical stucco suburban house exterior, neutral colors, daylight, real estate photography, high detail')}
+                afterSrc={buildSocialProofImage('mediterranean revival home facade renovation, terracotta barrel tile roof, warm creamy stucco walls, arched entry, wrought iron details, stone accents, lush landscaping, golden hour, photorealistic, high detail')}
+              />
+              <SocialProofCard
+                title="Industrial Loft"
+                subtitle="Denver, CO"
+                beforeSrc={buildSocialProofImage('front view photo of a plain suburban house exterior, neutral facade, daylight, real estate photography, high detail')}
+                afterSrc={buildSocialProofImage('industrial loft style home facade renovation, dark grey concrete texture, exposed brick accents, black steel canopy, asymmetrical facade composition, large black framed windows, moody overcast light, photorealistic, high detail')}
+              />
+            </div>
+          </section>
+        )}
+
+        {appState === 'IDLE' && (
+          <section id="styles" className="mb-12">
+            <div className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">Pick a Look</h3>
+                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+                  Choose a style to prefill your prompt, then upload your photo.
+                </p>
+              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">6 curated styles</div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {styleShowcaseCards.map((style) => (
+                <StyleShowcaseCard
+                  key={style.id}
+                  title={style.name}
+                  description={style.description}
+                  imageSrc={buildSocialProofImage(style.imagePrompt)}
+                  onPick={() => handleStyleShowcasePick(style.prompt)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {appState === 'IDLE' && (
+          <section id="how-it-works" className="mb-12">
+            <div className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">How it works</h3>
+                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+                  Upload → Choose style → Get your redesign.
+                </p>
+              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">3 simple steps</div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <HowItWorksStep
+                step={1}
+                icon={<Upload className="w-6 h-6" />}
+                title="Upload your photo"
+                description="Use a straight-on front view for the best result. JPG/PNG supported."
+              />
+              <HowItWorksStep
+                step={2}
+                icon={<Palette className="w-6 h-6" />}
+                title="Choose a style"
+                description="Pick a curated look or write your own prompt to guide the redesign."
+              />
+              <HowItWorksStep
+                step={3}
+                icon={<Wand2 className="w-6 h-6" />}
+                title="Get your design"
+                description="See a professional preview in ~30 seconds, then decide if you want to unlock."
+              />
+            </div>
+          </section>
         )}
 
         {/* Workflow Steps Indicator */}
@@ -365,7 +770,7 @@ export default function HomeDesignPage() {
         )}
 
         {/* Main Card */}
-        <div className="bg-white rounded-3xl shadow-xl shadow-[#1a1f36]/5 border border-[#2d2a4a]/10 overflow-hidden">
+        <div id="generator" className="bg-white rounded-3xl shadow-xl shadow-[#1a1f36]/5 border border-[#2d2a4a]/10 overflow-hidden">
           <div className="p-6 sm:p-8">
             {/* IDLE & UPLOADED - Show image uploader + description */}
             {(appState === 'IDLE' || appState === 'UPLOADED') && (
@@ -396,9 +801,12 @@ export default function HomeDesignPage() {
                 
                 {/* Effect Image Preview */}
                 <div className="relative rounded-2xl overflow-hidden border border-[#2d2a4a]/10">
-                  <img
+                  <Image
                     src={effectImageUrl}
                     alt="Effect preview"
+                    width={1600}
+                    height={900}
+                    sizes="(max-width: 1024px) 100vw, 720px"
                     className="w-full h-auto"
                   />
                 </div>
@@ -466,7 +874,7 @@ export default function HomeDesignPage() {
 
         {/* Feature Highlights */}
         {appState === 'IDLE' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-16">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-14 sm:mt-16">
             <FeatureCard
               icon={
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -496,16 +904,554 @@ export default function HomeDesignPage() {
             />
           </div>
         )}
+
+        {appState === 'IDLE' && (
+          <section id="pricing" className="mt-14 sm:mt-16 mb-12">
+            <div className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">Pricing</h3>
+                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+                  Start free. Unlock only if you love it. No subscription.
+                </p>
+              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">One-time payment</div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <PricingCard
+                title="$0 Preview"
+                subtitle="Try it before you pay"
+                emphasized={false}
+                items={[
+                  'Upload 1 facade photo',
+                  'Pick a style or write your own prompt',
+                  'See a fast preview in ~30 seconds',
+                  'No sign up needed',
+                ]}
+                ctaLabel="Try Free — No Sign Up"
+                onCta={scrollToGenerator}
+              />
+              <PricingCard
+                title="$19 Unlock"
+                subtitle="Pay only if you love it"
+                emphasized={true}
+                badge="Recommended"
+                items={[
+                  'High-resolution download',
+                  'Instant access after payment',
+                  'One-time payment (no subscription)',
+                  'Commercial-ready presentation',
+                ]}
+                ctaLabel="Unlock HD — $19"
+                onCta={scrollToGenerator}
+              />
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <TrustPill icon={<Shield className="w-4 h-4" />} label="Your photo stays private" />
+              <TrustPill icon={<Clock className="w-4 h-4" />} label="~30-second preview" />
+              <TrustPill icon={<Star className="w-4 h-4" />} label="Pay only if you love it" />
+            </div>
+          </section>
+        )}
+
+        {appState === 'IDLE' && (
+          <section id="faq" className="mb-12">
+            <div className="flex items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">FAQ</h3>
+                <p className="text-sm text-[#2d2a4a]/60 mt-1">
+                  Quick answers to the most common questions.
+                </p>
+              </div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">Always optional</div>
+            </div>
+
+            <div className="rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="q1" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    What if I don’t like the result?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    You can regenerate and try a different style. Only unlock when you’re happy with what you see.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="q2" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    Is my photo data safe?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Your upload is used only to generate your preview. We don’t sell your data.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="q3" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    How long does generation take?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Most previews finish in about 30 seconds, depending on image size and traffic.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="q4" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    Can I use this for a new build?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    Yes. It works best with a front-facing exterior image or a clean elevation render.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="q5" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    Do I need design experience?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    No. Pick a style and you’ll get a guided, professional-looking result automatically.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="q6" className="px-4 sm:px-6">
+                  <AccordionTrigger className="text-left">
+                    Why is the preview blurred?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    The preview is designed to help you validate direction first. Unlocking provides the high-resolution version for download.
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-[#2d2a4a]/10 bg-white/50 backdrop-blur-sm mt-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-[#2d2a4a]/40">
-            AI Zaha Home Design - Transform your space with AI
-          </p>
+      <footer className="relative z-10 border-t border-[#2d2a4a]/10 bg-white/60 backdrop-blur-sm mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1a1f36] to-[#2d2a4a] flex items-center justify-center">
+                  <Home className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="text-base font-semibold text-[#1a1f36]">AI Zaha Home Design</div>
+                  <div className="text-xs text-[#2d2a4a]/60">Transform your facade</div>
+                </div>
+              </div>
+              <div className="text-sm text-[#2d2a4a]/60">
+                Upload a photo and get a fast facade redesign preview. Pay only if you love it.
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-[#1a1f36]">Product</div>
+              <div className="space-y-2">
+                <FooterButton onClick={scrollToGenerator} label="Try Free" />
+                <FooterButton onClick={scrollToSocialProof} label="Transformations" />
+                <FooterButton onClick={scrollToStyles} label="Styles" />
+                <FooterButton onClick={scrollToHowItWorks} label="How it works" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-[#1a1f36]">Pricing</div>
+              <div className="space-y-2">
+                <FooterButton onClick={scrollToPricing} label="$0 Preview" />
+                <FooterButton onClick={scrollToPricing} label="$19 Unlock" />
+                <FooterButton onClick={scrollToFaq} label="FAQ" />
+                <Link href="/blog" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
+                  Facade Tips
+                </Link>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-sm font-semibold text-[#1a1f36]">Legal</div>
+              <div className="space-y-2">
+                <Link href="/privacy" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
+                  Terms of Service
+                </Link>
+                <Link href="/refund" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
+                  Refund Policy
+                </Link>
+                <div className="text-xs text-[#2d2a4a]/40">
+                  AI-generated results. Please review before use.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t border-[#2d2a4a]/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-[#2d2a4a]/40">
+              © {new Date().getFullYear()} AI Zaha Home Design
+            </div>
+            <div className="text-xs text-[#2d2a4a]/40">
+              No subscription · Pay only if you love it
+            </div>
+          </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function BeforeAfterCard({
+  beforeSrc,
+  afterSrc,
+  priority,
+}: {
+  beforeSrc: string;
+  afterSrc: string;
+  priority?: boolean;
+}) {
+  const [value, setValue] = useState(58);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
+        <Image
+          src={beforeSrc}
+          alt="Before"
+          fill
+          sizes="(max-width: 1024px) 100vw, 520px"
+          className="object-cover"
+          priority={priority}
+        />
+
+        <div className="absolute inset-0 overflow-hidden" style={{ width: `${value}%` }}>
+          <div className="relative h-full w-[100%]">
+            <Image
+              src={afterSrc}
+              alt="After"
+              fill
+              sizes="(max-width: 1024px) 100vw, 520px"
+              className="object-cover"
+              priority={priority}
+            />
+          </div>
+        </div>
+
+        <div
+          className="absolute inset-y-0"
+          style={{ left: `${value}%`, transform: 'translateX(-1px)' }}
+        >
+          <div className="h-full w-[2px] bg-white/80 shadow" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-9 w-9 rounded-full bg-white/90 border border-[#2d2a4a]/10 shadow flex items-center justify-center">
+            <div className="h-4 w-4 rounded-full bg-gradient-to-br from-[#00d4aa] to-[#0077ff]" />
+          </div>
+        </div>
+
+        <div className="absolute left-3 top-3 inline-flex items-center rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+          Before
+        </div>
+        <div className="absolute right-3 top-3 inline-flex items-center rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
+          After
+        </div>
+      </div>
+
+      <input
+        type="range"
+        min={15}
+        max={85}
+        value={value}
+        onChange={(e) => setValue(Number(e.target.value))}
+        className="w-full accent-[#00d4aa]"
+        aria-label="Compare before and after"
+      />
+    </div>
+  );
+}
+
+function NavLink({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-3 py-2 rounded-xl text-sm text-[#2d2a4a]/60 hover:text-[#1a1f36] hover:bg-[#2d2a4a]/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/40"
+    >
+      {label}
+    </button>
+  );
+}
+
+function MobileNavButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full px-4 py-3 rounded-xl border border-[#2d2a4a]/10 hover:bg-[#2d2a4a]/5 transition-colors text-sm text-[#1a1f36] flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/40"
+    >
+      <span>{label}</span>
+      <ChevronRight className="w-4 h-4 text-[#2d2a4a]/50" />
+    </button>
+  );
+}
+
+function FooterButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="block text-left text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/40 rounded"
+    >
+      {label}
+    </button>
+  );
+}
+
+function TrustPill({
+  icon,
+  label,
+}: {
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <div className="h-12 rounded-xl bg-white border border-[#2d2a4a]/10 shadow-sm px-4 flex items-center gap-2 text-sm text-[#2d2a4a]/70">
+      <span className="text-[#00d4aa]">{icon}</span>
+      <span className="truncate">{label}</span>
+    </div>
+  );
+}
+
+function PricingCard({
+  title,
+  subtitle,
+  badge,
+  emphasized,
+  items,
+  ctaLabel,
+  onCta,
+}: {
+  title: string;
+  subtitle: string;
+  badge?: string;
+  emphasized: boolean;
+  items: string[];
+  ctaLabel: string;
+  onCta: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl bg-white border shadow-sm overflow-hidden',
+        emphasized
+          ? 'border-[#00d4aa]/40 shadow-lg shadow-[#00d4aa]/10'
+          : 'border-[#2d2a4a]/10'
+      )}
+    >
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xl font-bold text-[#1a1f36]">{title}</div>
+            <div className="text-sm text-[#2d2a4a]/60 mt-1">{subtitle}</div>
+          </div>
+          {badge && (
+            <div className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#00d4aa]/15 to-[#0077ff]/15 border border-[#00d4aa]/25 px-3 py-1 text-xs font-medium text-[#1a1f36]">
+              <Star className="w-3.5 h-3.5 text-[#00d4aa]" />
+              {badge}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 space-y-3">
+          {items.map((item) => (
+            <div key={item} className="flex items-start gap-2 text-sm text-[#2d2a4a]/70">
+              <span className="mt-0.5 text-[#00d4aa]">
+                <Check className="w-4 h-4" />
+              </span>
+              <span className="leading-relaxed">{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          <Button
+            onClick={onCta}
+            className={cn(
+              'w-full h-12 rounded-xl font-medium transition-all duration-300',
+              emphasized
+                ? 'bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white'
+                : 'bg-[#1a1f36] text-white hover:opacity-90'
+            )}
+          >
+            {ctaLabel}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+          {emphasized && (
+            <div className="mt-3 text-xs text-[#2d2a4a]/50">
+              One-time payment. No subscription. Unlock after preview.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SocialProofCard({
+  title,
+  subtitle,
+  beforeSrc,
+  afterSrc,
+}: {
+  title: string;
+  subtitle: string;
+  beforeSrc: string;
+  afterSrc: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <div className="text-sm font-semibold text-[#1a1f36]">{title}</div>
+            <div className="text-xs text-[#2d2a4a]/60 mt-0.5">{subtitle}</div>
+          </div>
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="px-2.5 py-1 rounded-full bg-gradient-to-r from-[#00d4aa]/10 to-[#0077ff]/10 text-[11px] text-[#2d2a4a]">
+              Before / After
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
+            <Image
+              src={beforeSrc}
+              alt={`${title} before`}
+              fill
+              sizes="(max-width: 640px) 100vw, 260px"
+              className="object-cover"
+            />
+            <div className="absolute left-2 top-2 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
+              Before
+            </div>
+          </div>
+
+          <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
+            <Image
+              src={afterSrc}
+              alt={`${title} after`}
+              fill
+              sizes="(max-width: 640px) 100vw, 260px"
+              className="object-cover"
+            />
+            <div className="absolute left-2 top-2 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
+              After
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StyleShowcaseCard({
+  title,
+  description,
+  imageSrc,
+  onPick,
+}: {
+  title: string;
+  description: string;
+  imageSrc: string;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className={cn(
+        'group rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm overflow-hidden text-left transition-all duration-300',
+        'hover:border-[#00d4aa]/30 hover:shadow-lg hover:shadow-[#00d4aa]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00d4aa]/50'
+      )}
+      aria-label={`Pick ${title} style`}
+    >
+      <div className="relative aspect-[4/3] bg-[#fafbfc]">
+        <Image
+          src={imageSrc}
+          alt={title}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 320px"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <div className="absolute left-4 bottom-4 right-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-base font-semibold text-white leading-tight">{title}</div>
+              <div className="text-xs text-white/80 mt-1 line-clamp-2">{description}</div>
+            </div>
+            <div className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white/10 border border-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-sm">
+              Try
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function HowItWorksStep({
+  step,
+  icon,
+  title,
+  description,
+}: {
+  step: number;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="relative rounded-2xl bg-white border border-[#2d2a4a]/10 shadow-sm p-6">
+      <div className="flex items-start gap-4">
+        <div className="shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00d4aa]/15 to-[#0077ff]/15 flex items-center justify-center text-[#00d4aa]">
+            {icon}
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="text-xs font-semibold text-[#2d2a4a]/60">Step {step}</div>
+            <div className="h-1.5 w-1.5 rounded-full bg-[#2d2a4a]/20" />
+            <div className="text-xs text-[#2d2a4a]/50">~30 seconds total</div>
+          </div>
+          <h4 className="mt-2 text-lg font-semibold text-[#1a1f36] leading-snug">{title}</h4>
+          <p className="mt-2 text-sm text-[#2d2a4a]/60 leading-relaxed">{description}</p>
+        </div>
+      </div>
+
+      {step < 3 && (
+        <div className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2">
+          <div className="w-6 h-6 rounded-full bg-white border border-[#2d2a4a]/10 shadow-sm flex items-center justify-center text-[#2d2a4a]/60">
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
