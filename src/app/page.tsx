@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { GLSLHills } from '@/components/ui/glsl-hills';
 
 type AppState = 
   | 'IDLE' 
@@ -530,7 +531,12 @@ export default function HomeDesignPage() {
       <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 sm:pb-12">
         {/* Intro Section (only show in IDLE state) */}
         {appState === 'IDLE' && (
-          <div className="mb-16 sm:mb-20 animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div className="relative mb-16 sm:mb-20 animate-in fade-in slide-in-from-bottom-2 duration-700">
+            {/* Dynamic Waves Background for Hero */}
+            <div className="absolute -inset-x-20 -inset-y-32 -z-10 pointer-events-none opacity-40">
+              <GLSLHills />
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div className="space-y-8">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full zaha-glass text-sm text-[#2d2a4a]">
