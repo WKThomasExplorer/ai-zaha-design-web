@@ -31,4 +31,9 @@ echo "Clearing port ${PORT} before start."
 kill_port_if_listening
 echo "Starting HTTP service on port ${PORT} for dev..."
 
-PORT=$PORT pnpm tsx watch src/server.ts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/resolve-pnpm.sh"
+resolve_pnpm || exit 1
+
+PORT=$PORT "${PNPM[@]}" tsx watch src/server.ts
