@@ -26,6 +26,6 @@ echo "Building the Next.js project..."
 "${PNPM[@]}" next build
 
 echo "Bundling server with tsup..."
-"${PNPM[@]}" tsup src/server.ts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
+"${PNPM[@]}" tsup src/server.ts --format cjs --platform node --target node24 --outDir dist --no-splitting --no-minify
 
 echo "Build completed successfully!"

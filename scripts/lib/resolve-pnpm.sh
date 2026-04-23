@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Resolve the pnpm CLI: use global pnpm if present, otherwise Corepack (Node 16+).
+# Resolve the pnpm CLI: use global pnpm if present, otherwise Corepack (see AGENTS.md: Node.js 24).
 # Sets PNPM as a bash array so callers can use: "${PNPM[@]}" <args...>
 # shellcheck disable=SC2034
 resolve_pnpm() {
@@ -8,7 +8,7 @@ resolve_pnpm() {
   elif command -v corepack >/dev/null 2>&1; then
     PNPM=(corepack pnpm)
   else
-    echo "pnpm not found. Install Node 20+ and run: corepack enable" >&2
+    echo "pnpm not found. Install Node.js 24+ and run: corepack enable" >&2
     return 1
   fi
 }
