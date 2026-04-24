@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, extractTokenFromHeader } from '@/lib/jwt';
+import { getDb } from '@/storage/database/db';
+import { users } from '@/storage/database/shared/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,12 +24,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const db = getDb();
+    const row = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+      })
+      .from(users)
+      .where(eq(users.id, payload.id))
+      .limit(1);
+
+    const u = row[0];
+    if (!u) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid or expired token' },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      user: {
-        id: payload.id,
-        username: payload.username,
-      },
+      user: u,
     });
   } catch (err) {
     console.error('Auth check error:', err);

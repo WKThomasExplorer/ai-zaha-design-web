@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 interface User {
   id: number;
   username: string;
+  email: string;
   created_at: string;
   updated_at: string;
 }
@@ -90,7 +91,7 @@ export default function AdminUsersPage() {
             type="text"
             name="search"
             className="block w-full rounded-xl border border-[#2d2a4a]/20 py-2 pl-10 pr-3 text-sm focus:border-[#00d4aa] focus:outline-none focus:ring-1 focus:ring-[#00d4aa] transition-colors"
-            placeholder="Search username..."
+            placeholder="Search username or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -111,6 +112,7 @@ export default function AdminUsersPage() {
               <tr>
                 <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-[#1a1f36] sm:pl-6">ID</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-[#1a1f36]">Username</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-[#1a1f36]">Email</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-[#1a1f36]">Status</th>
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-[#1a1f36]">Joined At</th>
               </tr>
@@ -118,7 +120,7 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-[#2d2a4a]/10 bg-white">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-sm text-[#2d2a4a]/60">
+                  <td colSpan={5} className="py-12 text-center text-sm text-[#2d2a4a]/60">
                     <div className="flex justify-center items-center gap-2">
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00d4aa] border-t-transparent"></div>
                       Loading users...
@@ -127,7 +129,7 @@ export default function AdminUsersPage() {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-sm text-[#2d2a4a]/60">
+                  <td colSpan={5} className="py-12 text-center text-sm text-[#2d2a4a]/60">
                     No users found.
                   </td>
                 </tr>
@@ -144,6 +146,9 @@ export default function AdminUsersPage() {
                           <Shield className="w-3.5 h-3.5 text-purple-500" />
                         )}
                       </div>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-[#2d2a4a]/80 break-all max-w-[220px]">
+                      {user.email}
                     </td>
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-[#2d2a4a]/80">
                       {/* Hardcoded as schema doesn't have status yet */}

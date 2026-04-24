@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/storage/database/db';
 import { users } from '@/storage/database/shared/schema';
-import { desc, ilike, sql } from 'drizzle-orm';
+import { desc, ilike, or, sql } from 'drizzle-orm';
 import { verifyAdmin } from '../overview/route';
 
 export async function GET(request: NextRequest) {
@@ -23,7 +23,11 @@ export async function GET(request: NextRequest) {
     // Build query conditions
     let queryCondition = undefined;
     if (search) {
-      queryCondition = ilike(users.username, `%${search}%`);
+      const q = `%${search}%`;
+      queryCondition = or(
+        ilike(users.username, q),
+        ilike(users.email, q)
+      );
     }
 
     // Count query
@@ -37,6 +41,7 @@ export async function GET(request: NextRequest) {
       .select({
         id: users.id,
         username: users.username,
+        email: users.email,
         created_at: users.created_at,
         updated_at: users.updated_at,
       })

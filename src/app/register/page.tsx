@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
@@ -35,6 +36,11 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+
     if (!TURNSTILE_SITE_KEY) {
       setError('Verification is not configured');
       return;
@@ -46,7 +52,7 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const result = await register(username, password, turnstileToken);
+    const result = await register(username, password, email, turnstileToken);
 
     if (result.success) {
       router.push('/');
@@ -94,6 +100,23 @@ export default function RegisterPage() {
                 required
                 minLength={3}
                 maxLength={50}
+                className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#00d4aa] focus:ring-[#00d4aa]/20"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                name="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
                 className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#00d4aa] focus:ring-[#00d4aa]/20"
               />
             </div>

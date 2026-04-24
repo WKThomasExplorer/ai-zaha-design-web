@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
     // Find user by username
     const db = getDb();
     const rows = await db
-      .select({ id: users.id, username: users.username, password: users.password })
+      .select({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        password: users.password,
+      })
       .from(users)
       .where(eq(users.username, username))
       .limit(1);
@@ -73,6 +78,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         username: user.username,
+        email: user.email,
       },
     });
 

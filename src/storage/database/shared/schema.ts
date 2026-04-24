@@ -11,12 +11,14 @@ export const users = pgTable(
   {
     id: serial("id").primaryKey().notNull(),
     username: text("username").notNull(),
+    email: text("email").notNull(),
     password: text("password").notNull(),
     created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("users_username_uq").on(table.username),
+    uniqueIndex("users_email_uq").on(table.email),
     index("users_created_at_idx").on(table.created_at),
   ],
 );
@@ -106,5 +108,6 @@ export const generationMaterials = pgTable(
   ],
 );
 
+export type AppUser = typeof users.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = typeof blogPosts.$inferInsert;

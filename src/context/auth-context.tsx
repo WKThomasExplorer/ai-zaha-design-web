@@ -11,6 +11,7 @@ import {
 interface User {
   id: number;
   username: string;
+  email: string;
 }
 
 interface AuthContextType {
@@ -24,6 +25,7 @@ interface AuthContextType {
   register: (
     username: string,
     password: string,
+    email: string,
     turnstileToken: string
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
@@ -97,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (
     username: string,
     password: string,
+    email: string,
     turnstileToken: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -105,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, turnstileToken }),
+        body: JSON.stringify({ username, password, email, turnstileToken }),
       });
 
       const data = await response.json();
