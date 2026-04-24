@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,8 +16,10 @@ export default function RegisterPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,14 +35,25 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!TURNSTILE_SITE_KEY) {
+      setError('Verification is not configured');
+      return;
+    }
+    if (!turnstileToken) {
+      setError('Please complete the verification');
+      return;
+    }
+
     setLoading(true);
 
-    const success = await register(username, password);
+    const result = await register(username, password, turnstileToken);
 
-    if (success) {
+    if (result.success) {
       router.push('/');
     } else {
-      setError('Registration failed. Username may already exist.');
+      setError(result.error ?? 'Registration failed. Username may already exist.');
+      setTurnstileToken('');
+      turnstileRef.current?.reset();
     }
 
     setLoading(false);
@@ -120,9 +136,32 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {TURNSTILE_SITE_KEY ? (
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                  }}
+                  onExpire={() => {
+                    setTurnstileToken('');
+                  }}
+                  onError={() => {
+                    setTurnstileToken('');
+                  }}
+                  options={{ theme: 'dark' }}
+                />
+              </div>
+            ) : (
+              <p className="text-center text-sm text-amber-400/90">
+                Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY
+              </p>
+            )}
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !TURNSTILE_SITE_KEY || !turnstileToken}
               className="w-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:opacity-90 text-white font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
             >
               {loading ? (

@@ -4,15 +4,37 @@ import { getDb } from '@/storage/database/db';
 import { users } from '@/storage/database/shared/schema';
 import { eq } from 'drizzle-orm';
 import { signToken } from '@/lib/jwt';
+import { verifyTurnstileToken } from '@/lib/turnstile';
 
 const SALT_ROUNDS = 10;
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { turnstileToken, ...registrationData } = body as {
+      turnstileToken?: string;
+      username?: string;
+      password?: string;
+    };
+    const { username, password } = registrationData;
 
-    // Validate input
+    if (!turnstileToken) {
+      return NextResponse.json(
+        { success: false, error: '请先完成人机验证' },
+        { status: 400 }
+      );
+    }
+
+    const forwarded = request.headers.get('x-forwarded-for');
+    const ip = forwarded?.split(',')[0]?.trim() || undefined;
+    const turnstileOk = await verifyTurnstileToken(turnstileToken, ip);
+    if (!turnstileOk) {
+      return NextResponse.json(
+        { success: false, error: '人机验证失败，请重试' },
+        { status: 403 }
+      );
+    }
+
     if (!username || !password) {
       return NextResponse.json(
         { success: false, error: 'Username and password are required' },

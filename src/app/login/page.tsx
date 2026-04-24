@@ -1,31 +1,48 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!TURNSTILE_SITE_KEY) {
+      setError('Verification is not configured');
+      return;
+    }
+    if (!turnstileToken) {
+      setError('Please complete the verification');
+      return;
+    }
+
     setLoading(true);
 
-    const success = await login(username, password);
+    const result = await login(username, password, turnstileToken);
 
-    if (success) {
+    if (result.success) {
       router.push('/');
     } else {
-      setError('Invalid username or password');
+      setError(result.error ?? 'Invalid username or password');
+      setTurnstileToken('');
+      turnstileRef.current?.reset();
     }
 
     setLoading(false);
@@ -89,9 +106,32 @@ export default function LoginPage() {
               </div>
             )}
 
+            {TURNSTILE_SITE_KEY ? (
+              <div className="flex justify-center">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => {
+                    setTurnstileToken(token);
+                  }}
+                  onExpire={() => {
+                    setTurnstileToken('');
+                  }}
+                  onError={() => {
+                    setTurnstileToken('');
+                  }}
+                  options={{ theme: 'dark' }}
+                />
+              </div>
+            ) : (
+              <p className="text-center text-sm text-amber-400/90">
+                Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY
+              </p>
+            )}
+
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !TURNSTILE_SITE_KEY || !turnstileToken}
               className="w-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:opacity-90 text-white font-medium py-3 rounded-xl transition-all duration-200 disabled:opacity-50"
             >
               {loading ? (

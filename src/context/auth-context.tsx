@@ -16,8 +16,16 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
-  register: (username: string, password: string) => Promise<boolean>;
+  login: (
+    username: string,
+    password: string,
+    turnstileToken: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    username: string,
+    password: string,
+    turnstileToken: string
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
@@ -56,14 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (
+    username: string,
+    password: string,
+    turnstileToken: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, turnstileToken }),
       });
 
       const data = await response.json();
@@ -71,22 +83,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.success && data.token) {
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         setUser(data.user);
-        return true;
+        return { success: true };
       }
-      return false;
+      return {
+        success: false,
+        error: typeof data.error === 'string' ? data.error : 'Login failed',
+      };
     } catch {
-      return false;
+      return { success: false, error: 'Login failed' };
     }
   };
 
-  const register = async (username: string, password: string): Promise<boolean> => {
+  const register = async (
+    username: string,
+    password: string,
+    turnstileToken: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, turnstileToken }),
       });
 
       const data = await response.json();
@@ -94,11 +113,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.success && data.token) {
         localStorage.setItem(AUTH_TOKEN_KEY, data.token);
         setUser(data.user);
-        return true;
+        return { success: true };
       }
-      return false;
+      return {
+        success: false,
+        error: typeof data.error === 'string' ? data.error : 'Registration failed',
+      };
     } catch {
-      return false;
+      return { success: false, error: 'Registration failed' };
     }
   };
 
