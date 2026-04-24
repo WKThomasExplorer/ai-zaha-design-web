@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { imageService } from '@/lib/ai/image-service';
+import { isR2MirroringEnabled, mirrorTempImageUrlToR2 } from '@/lib/r2-mirror';
+import { extractTokenFromHeader, verifyToken } from '@/lib/jwt';
 import { getDb } from '@/storage/database/db';
 import { generationPackages, generationRuns } from '@/storage/database/shared/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { extractTokenFromHeader, verifyToken } from '@/lib/jwt';
-import { createHash } from 'crypto';
+
+/** AI 返回的临时 URL 在可配置时先镜像到 R2，数据库与接口统一返回可长期访问的地址。 */
+async function resolveResultImageForStorage(
+  tempUrl: string | undefined,
+  kind: 'effect' | 'explosion'
+): Promise<string | null> {
+  if (!tempUrl) {
+    return null;
+  }
+  if (!isR2MirroringEnabled()) {
+    return tempUrl;
+  }
+  return mirrorTempImageUrlToR2(tempUrl, kind);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +50,9 @@ export async function POST(request: NextRequest) {
         : null;
 
     let result;
+    /** 与写入 generation_runs.result_image_url 相同：临时图已换成的 R2 永久链或回退的临时链 */
+    let persistedResultImageUrl: string | null = null;
+
     if (type === 'effect') {
       const insertedPackages = await db
         .insert(generationPackages)
@@ -48,6 +66,43 @@ export async function POST(request: NextRequest) {
 
       result = await imageService.generateFacadeEffect(description, imageBase64);
 
+      let resultImageForDb: string | null = null;
+      if (result.success) {
+        try {
+          resultImageForDb = await resolveResultImageForStorage(
+            result.imageUrl,
+            'effect'
+          );
+        } catch (e) {
+          console.error('[generate] R2 mirror failed (effect):', e);
+          await db.insert(generationRuns).values({
+            package_id: packageId,
+            user_id: userId,
+            type: 'effect',
+            input_image_hash: inputImageHash,
+            description,
+            provider,
+            model,
+            size,
+            watermark,
+            status: 'failed',
+            result_image_url: null,
+            latency_ms:
+              typeof result.latency === 'number' ? Math.round(result.latency) : null,
+            error_code: 'r2_mirror',
+            error_message: 'Failed to persist image to storage',
+          });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Failed to persist image to storage. Please try again.',
+            },
+            { status: 502 }
+          );
+        }
+      }
+      persistedResultImageUrl = resultImageForDb;
+
       await db.insert(generationRuns).values({
         package_id: packageId,
         user_id: userId,
@@ -59,7 +114,7 @@ export async function POST(request: NextRequest) {
         size,
         watermark,
         status: result.success ? 'succeeded' : 'failed',
-        result_image_url: result.success ? result.imageUrl : null,
+        result_image_url: resultImageForDb,
         latency_ms: typeof result.latency === 'number' ? Math.round(result.latency) : null,
         error_code: result.success ? null : result.error?.code ?? null,
         error_message: result.success ? null : result.error?.message ?? null,
@@ -96,6 +151,43 @@ export async function POST(request: NextRequest) {
 
       result = await imageService.generateExplosionDiagram(description, baseImageUrl);
 
+      let resultImageForDb: string | null = null;
+      if (result.success) {
+        try {
+          resultImageForDb = await resolveResultImageForStorage(
+            result.imageUrl,
+            'explosion'
+          );
+        } catch (e) {
+          console.error('[generate] R2 mirror failed (explosion):', e);
+          await db.insert(generationRuns).values({
+            package_id: packageId,
+            user_id: userId,
+            type: 'explosion',
+            input_image_url: baseImageUrl,
+            description,
+            provider,
+            model,
+            size,
+            watermark,
+            status: 'failed',
+            result_image_url: null,
+            latency_ms:
+              typeof result.latency === 'number' ? Math.round(result.latency) : null,
+            error_code: 'r2_mirror',
+            error_message: 'Failed to persist image to storage',
+          });
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Failed to persist image to storage. Please try again.',
+            },
+            { status: 502 }
+          );
+        }
+      }
+      persistedResultImageUrl = resultImageForDb;
+
       await db.insert(generationRuns).values({
         package_id: packageId,
         user_id: userId,
@@ -107,7 +199,7 @@ export async function POST(request: NextRequest) {
         size,
         watermark,
         status: result.success ? 'succeeded' : 'failed',
-        result_image_url: result.success ? result.imageUrl : null,
+        result_image_url: resultImageForDb,
         latency_ms: typeof result.latency === 'number' ? Math.round(result.latency) : null,
         error_code: result.success ? null : result.error?.code ?? null,
         error_message: result.success ? null : result.error?.message ?? null,
@@ -122,8 +214,8 @@ export async function POST(request: NextRequest) {
     if (result.success) {
       return NextResponse.json({
         success: true,
-        imageUrl: result.imageUrl,
-        latency: result.latency
+        imageUrl: persistedResultImageUrl!,
+        latency: result.latency,
       });
     } else {
       // Map internal error types to HTTP status codes
