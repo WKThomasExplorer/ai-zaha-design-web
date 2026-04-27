@@ -11,9 +11,12 @@ interface ResultViewerProps {
   result: GenerationResult;
   onRegenerate: () => void;
   className?: string;
+  language?: 'en' | 'zh';
 }
 
-export function ResultViewer({ result, onRegenerate, className }: ResultViewerProps) {
+export function ResultViewer({ result, onRegenerate, className, language = 'en' }: ResultViewerProps) {
+  const isZh = language === 'zh';
+  const t = (en: string, zh: string) => (isZh ? zh : en);
   const [activeTab, setActiveTab] = useState<'effect' | 'explosion'>('effect');
   const [downloading, setDownloading] = useState<string | null>(null);
 
@@ -131,7 +134,7 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
           )}
         >
           <ImageIcon className="w-4 h-4" />
-          Effect
+          {t('Effect', '效果图')}
         </button>
         <button
           onClick={() => setActiveTab('explosion')}
@@ -143,7 +146,7 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
           )}
         >
           <Layers className="w-4 h-4" />
-          Explosion
+          {t('Explosion', '爆炸图')}
         </button>
       </div>
 
@@ -151,7 +154,7 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
       <div className="relative rounded-2xl overflow-hidden bg-[#fafbfc] border border-[#2d2a4a]/10">
         <Image
           src={activeTab === 'effect' ? result.effectImageUrl : result.explosionImageUrl}
-          alt={activeTab === 'effect' ? 'Facade effect' : 'Explosion diagram'}
+          alt={activeTab === 'effect' ? t('Facade effect', '外立面效果图') : t('Explosion diagram', '爆炸图')}
           width={1600}
           height={900}
           sizes="(max-width: 1024px) 100vw, 720px"
@@ -176,7 +179,7 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
           ) : (
             <Download className="w-4 h-4 mr-2" />
           )}
-          Download {activeTab === 'effect' ? 'Effect' : 'Explosion'}
+          {t('Download', '下载')} {activeTab === 'effect' ? t('Effect', '效果图') : t('Explosion', '爆炸图')}
         </Button>
         <Button
           onClick={onRegenerate}
@@ -209,14 +212,14 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
         ) : (
           <Package className="w-5 h-5 mr-2" />
         )}
-        Download Complete Package (Effect + Explosion + Materials CSV)
+        {t('Download Complete Package (Effect + Explosion + Materials CSV)', '下载完整包（效果图 + 爆炸图 + 材料 CSV）')}
       </Button>
 
       {/* Materials List */}
       {result.materials && result.materials.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-[#1a1f36]">Materials Used</h4>
+            <h4 className="text-sm font-medium text-[#1a1f36]">{t('Materials Used', '使用材料')}</h4>
             <Button
               onClick={downloadCSV}
               variant="ghost"
@@ -224,7 +227,7 @@ export function ResultViewer({ result, onRegenerate, className }: ResultViewerPr
               className="text-xs text-[#00d4aa] hover:text-[#0077ff]"
             >
               <FileText className="w-3 h-3 mr-1" />
-              Download CSV
+              {t('Download CSV', '下载 CSV')}
             </Button>
           </div>
           <div className="space-y-2">

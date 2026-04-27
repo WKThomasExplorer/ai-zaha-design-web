@@ -12,13 +12,44 @@ import type { UploadedImage } from '@/types';
 interface ImageUploaderProps {
   onImageUploaded: (image: UploadedImage) => void;
   className?: string;
+  language?: 'en' | 'zh';
 }
 
-export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps) {
+export function ImageUploader({ onImageUploaded, className, language = 'en' }: ImageUploaderProps) {
+  const isZh = language === 'zh';
+  const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
   const { user, loading } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const optimizeImageDataUrl = useCallback((img: HTMLImageElement, originalDataUrl: string): string => {
+    const MAX_EDGE = 1600;
+    const maxEdge = Math.max(img.width, img.height);
+    const scale = maxEdge > MAX_EDGE ? MAX_EDGE / maxEdge : 1;
+    const targetWidth = Math.max(1, Math.round(img.width * scale));
+    const targetHeight = Math.max(1, Math.round(img.height * scale));
+
+    if (scale === 1 && originalDataUrl.length < 1_500_000) {
+      return originalDataUrl;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      return originalDataUrl;
+    }
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    const optimizedDataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    return optimizedDataUrl.length < originalDataUrl.length ? optimizedDataUrl : originalDataUrl;
+  }, []);
 
   const validateAndProcessImage = useCallback(
     async (file: File): Promise<UploadedImage | null> => {
@@ -27,13 +58,13 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
       // Check file type
       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
-        setError('Please upload a JPG, PNG, or WebP image');
+        setError(t('Please upload a JPG, PNG, or WebP image', '请上传 JPG、PNG 或 WebP 图片'));
         return null;
       }
 
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        setError('Image size must be less than 10MB');
+        setError(t('Image size must be less than 10MB', '图片大小需小于 10MB'));
         return null;
       }
 
@@ -45,34 +76,35 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
           img.onload = () => {
             // Check minimum dimensions
             if (img.width < 400 || img.height < 400) {
-              setError('Image must be at least 400x400 pixels');
+              setError(t('Image must be at least 400x400 pixels', '图片尺寸至少为 400x400 像素'));
               resolve(null);
               return;
             }
 
-            setPreview(dataUrl);
+            const optimizedPreview = optimizeImageDataUrl(img, dataUrl);
+            setPreview(optimizedPreview);
 
             resolve({
               file,
-              preview: dataUrl,
+              preview: optimizedPreview,
               width: img.width,
               height: img.height,
             });
           };
           img.onerror = () => {
-            setError('Failed to load image');
+            setError(t('Failed to load image', '图片加载失败'));
             resolve(null);
           };
           img.src = dataUrl;
         };
         reader.onerror = () => {
-          setError('Failed to read file');
+          setError(t('Failed to read file', '文件读取失败'));
           resolve(null);
         };
         reader.readAsDataURL(file);
       });
     },
-    []
+    [optimizeImageDataUrl, t]
   );
 
   const handleFileSelect = useCallback(
@@ -129,22 +161,24 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
               <Lock className="w-10 h-10 text-[#00d4aa]" />
             </div>
             <h3 className="text-xl font-semibold text-[#1a1f36] mb-2">
-              Login Required
+              {t('Login Required', '请先登录')}
             </h3>
             <p className="text-[#2d2a4a]/60 mb-6 max-w-md">
-              Please login to upload your facade image and access all features.
-              Create a free account to get started!
+              {t(
+                'Please login to upload your facade image and access all features. Create a free account to get started!',
+                '请先登录后上传外立面图片并使用全部功能。注册免费账号即可开始。'
+              )}
             </p>
             <div className="flex items-center gap-4">
               <Link href="/login">
                 <Button className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:opacity-90 text-white">
                   <ArrowRight className="w-4 h-4 mr-2" />
-                  Login
+                  {t('Login', '登录')}
                 </Button>
               </Link>
               <Link href="/register">
                 <Button variant="outline" className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10">
-                  Create Account
+                  {t('Create Account', '创建账号')}
                 </Button>
               </Link>
             </div>
@@ -174,13 +208,13 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
               <Upload className="w-8 h-8 text-white" />
             </div>
             <p className="text-lg font-medium text-[#1a1f36] mb-2">
-              Upload your facade image
+              {t('Upload your facade image', '上传你的建筑外立面图片')}
             </p>
             <p className="text-sm text-[#2d2a4a]/60 mb-4">
-              Drag and drop or click to browse
+              {t('Drag and drop or click to browse', '拖拽到此处，或点击选择文件')}
             </p>
             <p className="text-xs text-[#2d2a4a]/40">
-              JPG, PNG, WebP up to 10MB (min 400x400px)
+              {t('JPG, PNG, WebP up to 10MB (min 400x400px)', '支持 JPG/PNG/WebP，最大 10MB（至少 400x400）')}
             </p>
             <input
               type="file"
@@ -195,7 +229,7 @@ export function ImageUploader({ onImageUploaded, className }: ImageUploaderProps
           <div className="relative w-full max-h-[400px] aspect-[4/3]">
             <Image
               src={preview}
-              alt="Uploaded facade"
+              alt={t('Uploaded facade', '已上传外立面')}
               fill
               sizes="(max-width: 1024px) 100vw, 720px"
               className="object-contain"

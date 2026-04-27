@@ -7,12 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { STYLE_CATEGORIES, getStylesByCategory, type StyleReference } from '@/types';
 
+const MAX_DESCRIPTION_CHARS = 1000;
+
 interface DescriptionInputProps {
   onSubmit: () => void;
   className?: string;
+  language?: 'en' | 'zh';
 }
 
-export function DescriptionInput({ onSubmit, className }: DescriptionInputProps) {
+export function DescriptionInput({ onSubmit, className, language = 'en' }: DescriptionInputProps) {
+  const isZh = language === 'zh';
+  const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['Curated Styles']);
@@ -107,7 +112,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
           recognition.start();
         } catch {
           wantsListeningRef.current = false;
-          setSpeechError('Voice input is unavailable');
+          setSpeechError(t('Voice input is unavailable', '语音输入暂不可用'));
         }
       }, 250);
     };
@@ -126,11 +131,11 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       }
 
       if (err === 'no-speech') {
-        setSpeechError('No speech detected. Try again.');
+        setSpeechError(t('No speech detected. Try again.', '没有检测到语音，请重试。'));
       } else if (err === 'audio-capture') {
-        setSpeechError('Microphone not available.');
+        setSpeechError(t('Microphone not available.', '麦克风不可用。'));
       } else if (err === 'not-allowed' || err === 'service-not-allowed') {
-        setSpeechError('Microphone permission is blocked.');
+        setSpeechError(t('Microphone permission is blocked.', '麦克风权限被阻止。'));
       } else if (err === 'network') {
         if (wantsListeningRef.current && retryRef.current < 1) {
           retryRef.current += 1;
@@ -139,12 +144,12 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
           } catch {
             // ignore
           }
-          setSpeechError('Speech service unreachable (network). Retrying...');
+          setSpeechError(t('Speech service unreachable (network). Retrying...', '语音服务网络不可达，正在重试...'));
           return;
         }
-        setSpeechError('Speech service unreachable (network).');
+        setSpeechError(t('Speech service unreachable (network).', '语音服务网络不可达。'));
       } else {
-        setSpeechError(`Voice input failed (${err}).`);
+        setSpeechError(isZh ? `语音输入失败（${err}）。` : `Voice input failed (${err}).`);
       }
 
       wantsListeningRef.current = false;
@@ -179,7 +184,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
         const appended = finals.join(' ').trim();
         setValue((prev) => {
           const spacer = prev.trim().length > 0 ? ' ' : '';
-          return (prev + spacer + appended).slice(0, maxChars);
+          return (prev + spacer + appended).slice(0, MAX_DESCRIPTION_CHARS);
         });
         setTimeout(() => {
           textareaRef.current?.focus();
@@ -197,7 +202,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
         // ignore
       }
     };
-  }, []);
+  }, [isZh, t]);
 
   const toggleVoice = useCallback(() => {
     if (!speechSupported) return;
@@ -235,7 +240,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       } catch {
         wantsListeningRef.current = false;
         setStarting(false);
-        setSpeechError('Microphone permission is required.');
+        setSpeechError(t('Microphone permission is required.', '需要麦克风权限。'));
         return;
       }
 
@@ -244,12 +249,12 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       } catch {
         wantsListeningRef.current = false;
         setStarting(false);
-        setSpeechError('Speech recognition failed to start.');
+        setSpeechError(t('Speech recognition failed to start.', '语音识别启动失败。'));
       }
     };
 
     void start();
-  }, [speechSupported, listening, starting]);
+  }, [speechSupported, listening, starting, t]);
 
   // Auto-scroll textarea to bottom when value changes
   useEffect(() => {
@@ -288,7 +293,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
   }, [value, onSubmit]);
 
   const charCount = value.length;
-  const maxChars = 1000;
+  const maxChars = MAX_DESCRIPTION_CHARS;
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -296,7 +301,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-[#1a1f36]">
           <Sparkles className="w-4 h-4 text-[#00d4aa]" />
-          <span className="text-sm font-medium">Choose a style template (6 options)</span>
+          <span className="text-sm font-medium">{t('Choose a style template (6 options)', '选择风格模板（6 种）')}</span>
         </div>
 
         {/* Category Accordion */}
@@ -365,7 +370,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
             className="flex items-center gap-1 text-xs text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors"
           >
             <X className="w-3 h-3" />
-            Clear selection
+            {t('Clear selection', '清除选择')}
           </button>
         )}
       </div>
@@ -374,7 +379,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-[#1a1f36]">
-            Or write your own prompt
+            {t('Or write your own prompt', '或自行输入你的提示词')}
           </label>
           <div className="flex items-center gap-2">
             <Button
@@ -392,8 +397,8 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
                 speechSupported
                   ? listening
                     ? 'Stop voice input'
-                    : 'Start voice input'
-                  : 'Voice input not supported'
+                    : t('Start voice input', '开始语音输入')
+                  : t('Voice input not supported', '当前浏览器不支持语音输入')
               }
             >
               {listening || starting ? (
@@ -401,7 +406,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
               ) : (
                 <Mic className="w-4 h-4 mr-1.5" />
               )}
-              {listening || starting ? 'Stop' : 'Voice'}
+              {listening || starting ? t('Stop', '停止') : t('Voice', '语音')}
             </Button>
 
             <span
@@ -424,8 +429,8 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
           onBlur={() => setIsFocused(false)}
           placeholder={
             selectedStyleId
-              ? 'Edit the prompt if needed...'
-              : 'Describe your dream facade in your own words...'
+              ? t('Edit the prompt if needed...', '如有需要可继续编辑提示词...')
+              : t('Describe your dream facade in your own words...', '用你的话描述理想中的外立面效果...')
           }
           className={cn(
             'min-h-[120px] resize-none transition-all duration-300',
@@ -436,7 +441,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
         />
         {listening && interimTranscript && (
           <div className="text-xs text-[#2d2a4a]/60">
-            <span className="text-[#00d4aa] font-medium">Listening:</span> {interimTranscript}
+            <span className="text-[#00d4aa] font-medium">{t('Listening:', '正在聆听：')}</span> {interimTranscript}
           </div>
         )}
         {speechError && (
@@ -446,7 +451,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
           </div>
         )}
         <p className="text-xs text-[#2d2a4a]/40">
-          Tip: Include style, colors, materials, and specific elements you want
+          {t('Tip: Include style, colors, materials, and specific elements you want', '建议：描述风格、颜色、材质以及你想强调的具体元素')}
         </p>
       </div>
 
@@ -463,7 +468,7 @@ export function DescriptionInput({ onSubmit, className }: DescriptionInputProps)
         )}
       >
         <Zap className="w-4 h-4 mr-2" />
-        Generate My Design
+        {t('Generate My Design', '生成我的设计')}
       </Button>
     </div>
   );

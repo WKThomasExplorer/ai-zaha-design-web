@@ -7,13 +7,17 @@ interface LoadingStateProps {
   className?: string;
   message?: string;
   progress?: number;
+  language?: 'en' | 'zh';
 }
 
 export function LoadingState({
   className,
   message = 'Generating your design...',
   progress,
+  language = 'en',
 }: LoadingStateProps) {
+  const isZh = language === 'zh';
+  const t = (en: string, zh: string) => (isZh ? zh : en);
   return (
     <div className={cn('flex flex-col items-center justify-center py-16', className)}>
       {/* Animated Logo/Icon */}
@@ -32,7 +36,7 @@ export function LoadingState({
       {/* Message */}
       <p className="text-lg font-medium text-[#1a1f36] mb-2">{message}</p>
       <p className="text-sm text-[#2d2a4a]/60 mb-6">
-        This may take a few moments...
+        {t('This may take a few moments...', '这可能需要几秒钟...')}
       </p>
 
       {/* Progress Bar (optional) */}
@@ -47,14 +51,14 @@ export function LoadingState({
 
       {/* Generation Steps */}
       <div className="mt-8 space-y-3">
-        <LoadingStep label="Analyzing your facade" done={!!(progress && progress > 20)} />
+        <LoadingStep label={t('Analyzing your facade', '正在分析外立面')} done={!!(progress && progress > 20)} />
         <LoadingStep
-          label="Generating effect image"
+          label={t('Generating effect image', '正在生成效果图')}
           done={!!(progress && progress > 50)}
           active={!!(progress && progress > 20 && progress <= 50)}
         />
         <LoadingStep
-          label="Creating explosion diagram"
+          label={t('Creating explosion diagram', '正在生成爆炸图')}
           done={!!(progress && progress > 90)}
           active={!!(progress && progress > 50 && progress <= 90)}
         />

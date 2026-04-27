@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Sparkles, Home, Globe, ChevronRight, CheckCircle2, ArrowRight, RotateCcw, User, LogOut, Upload, Palette, Wand2, Menu, Check, Star, Shield, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,14 @@ export default function HomeDesignPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState('en');
+  const isZh = language === 'zh';
+  const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
   const [heroCarouselApi, setHeroCarouselApi] = useState<CarouselApi | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isGeneratingEffectRef = useRef(false);
+  const isGeneratingExplosionRef = useRef(false);
+  const effectRequestIdRef = useRef(0);
+  const explosionRequestIdRef = useRef(0);
 
   const heroSlides = [
     {
@@ -182,7 +188,9 @@ export default function HomeDesignPage() {
 
   // Generate effect image only
   const generateEffectImage = useCallback(async () => {
-    if (!uploadedImage) return;
+    if (!uploadedImage || isGeneratingEffectRef.current) return;
+    isGeneratingEffectRef.current = true;
+    const requestId = ++effectRequestIdRef.current;
 
     const descText = localStorage.getItem('design_description') || 'modern facade renovation';
     setAppState('GENERATING_EFFECT');
@@ -210,22 +218,32 @@ export default function HomeDesignPage() {
       const effectData = await effectResponse.json();
 
       if (!effectData.success) {
-        throw new Error(effectData.error || 'Failed to generate effect image');
+        throw new Error(effectData.error || t('Failed to generate effect image', '效果图生成失败'));
       }
 
-      setProgress(100);
-      setEffectImageUrl(effectData.imageUrl);
-      setAppState('EFFECT_READY');
+      if (effectRequestIdRef.current === requestId) {
+        setProgress(100);
+        setEffectImageUrl(effectData.imageUrl);
+        setAppState('EFFECT_READY');
+      }
     } catch (err) {
       console.error('Generation error:', err);
-      setError(err instanceof Error ? err.message : 'Generation failed');
-      setAppState('ERROR');
+      if (effectRequestIdRef.current === requestId) {
+        setError(err instanceof Error ? err.message : t('Generation failed', '生成失败'));
+        setAppState('ERROR');
+      }
+    } finally {
+      if (effectRequestIdRef.current === requestId) {
+        isGeneratingEffectRef.current = false;
+      }
     }
-  }, [uploadedImage]);
+  }, [uploadedImage, t]);
 
   // Generate explosion diagram (after user confirms effect image)
   const generateExplosionDiagram = useCallback(async () => {
-    if (!effectImageUrl) return;
+    if (!effectImageUrl || isGeneratingExplosionRef.current) return;
+    isGeneratingExplosionRef.current = true;
+    const requestId = ++explosionRequestIdRef.current;
 
     setAppState('GENERATING_EXPLOSION');
     setProgress(0);
@@ -250,7 +268,7 @@ export default function HomeDesignPage() {
       const explosionData = await explosionResponse.json();
 
       if (!explosionData.success) {
-        throw new Error(explosionData.error || 'Failed to generate explosion diagram');
+        throw new Error(explosionData.error || t('Failed to generate explosion diagram', '爆炸图生成失败'));
       }
 
       setProgress(60);
@@ -289,22 +307,30 @@ export default function HomeDesignPage() {
         console.error('Material analysis failed, using defaults:', analyzeError);
       }
 
-      setProgress(100);
+      if (explosionRequestIdRef.current === requestId) {
+        setProgress(100);
 
-      // Complete with both images
-      setGenerationResult({
-        effectImageUrl: effectImageUrl,
-        explosionImageUrl: explosionData.imageUrl,
-        materials: materials,
-      });
+        // Complete with both images
+        setGenerationResult({
+          effectImageUrl: effectImageUrl,
+          explosionImageUrl: explosionData.imageUrl,
+          materials: materials,
+        });
 
-      setAppState('COMPLETED');
+        setAppState('COMPLETED');
+      }
     } catch (err) {
       console.error('Generation error:', err);
-      setError(err instanceof Error ? err.message : 'Generation failed');
-      setAppState('ERROR');
+      if (explosionRequestIdRef.current === requestId) {
+        setError(err instanceof Error ? err.message : t('Generation failed', '生成失败'));
+        setAppState('ERROR');
+      }
+    } finally {
+      if (explosionRequestIdRef.current === requestId) {
+        isGeneratingExplosionRef.current = false;
+      }
     }
-  }, [effectImageUrl]);
+  }, [effectImageUrl, t]);
 
   // Listen for description saved event
   useEffect(() => {
@@ -328,6 +354,10 @@ export default function HomeDesignPage() {
 
   // Handle start over
   const handleStartOver = useCallback(() => {
+    effectRequestIdRef.current += 1;
+    explosionRequestIdRef.current += 1;
+    isGeneratingEffectRef.current = false;
+    isGeneratingExplosionRef.current = false;
     setAppState('IDLE');
     setUploadedImage(null);
     setEffectImageUrl(null);
@@ -359,7 +389,7 @@ export default function HomeDesignPage() {
                     AI Zaha Home Design
                   </h1>
                   <p className="text-xs text-[#2d2a4a]/60">
-                    Transform your facade
+                    {t('Transform your facade', '重塑你的建筑外立面')}
                   </p>
                 </div>
               </Link>
@@ -368,13 +398,13 @@ export default function HomeDesignPage() {
             {/* Navigation Links */}
             <div className="flex items-center gap-3">
               <nav aria-label="Primary" className="hidden lg:flex items-center gap-1">
-                <NavLink onClick={scrollToGenerator} label="Try Free" />
+                <NavLink onClick={scrollToGenerator} label={t('Try Free', '免费试用')} />
                 {appState === 'IDLE' && (
                   <>
-                    <NavLink onClick={scrollToSocialProof} label="Transformations" />
-                    <NavLink onClick={scrollToStyles} label="Styles" />
-                    <NavLink onClick={scrollToHowItWorks} label="How it works" />
-                    <NavLink onClick={scrollToPricing} label="Pricing" />
+                    <NavLink onClick={scrollToSocialProof} label={t('Transformations', '案例对比')} />
+                    <NavLink onClick={scrollToStyles} label={t('Styles', '风格模板')} />
+                    <NavLink onClick={scrollToHowItWorks} label={t('How it works', '使用流程')} />
+                    <NavLink onClick={scrollToPricing} label={t('Pricing', '价格')} />
                     <NavLink onClick={scrollToFaq} label="FAQ" />
                   </>
                 )}
@@ -383,14 +413,14 @@ export default function HomeDesignPage() {
                   className="px-3 py-2 rounded-xl text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] hover:bg-[#2d2a4a]/5 transition-colors flex items-center gap-1"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Facade Tips</span>
+                  <span>{t('Facade Tips', '外立面技巧')}</span>
                 </Link>
               </nav>
 
               <div className="hidden sm:flex items-center gap-2">
                 <Globe className="w-4 h-4 text-[#2d2a4a]/60" />
                 <select
-                  aria-label="Language"
+                  aria-label={t('Language', '语言')}
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
                   className="text-sm bg-transparent border-none focus:outline-none text-[#2d2a4a]/60 cursor-pointer"
@@ -414,8 +444,8 @@ export default function HomeDesignPage() {
                       <button
                         onClick={logout}
                         className="p-2 rounded-lg hover:bg-[#2d2a4a]/5 transition-colors text-[#2d2a4a]/60 hover:text-red-500"
-                        title="Logout"
-                        aria-label="Logout"
+                        title={t('Logout', '退出登录')}
+                        aria-label={t('Logout', '退出登录')}
                       >
                         <LogOut className="w-4 h-4" />
                       </button>
@@ -424,12 +454,12 @@ export default function HomeDesignPage() {
                     <>
                       <Link href="/login">
                         <Button variant="ghost" size="sm" className="text-[#2d2a4a]/60 hover:text-[#00d4aa]">
-                          Login
+                          {t('Login', '登录')}
                         </Button>
                       </Link>
                       <Link href="/register">
                         <Button size="sm" className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white hover:opacity-90">
-                          Sign Up
+                          {t('Sign Up', '注册')}
                         </Button>
                       </Link>
                     </>
@@ -442,7 +472,7 @@ export default function HomeDesignPage() {
                   <SheetTrigger asChild>
                     <button
                       className="h-10 w-10 rounded-xl border border-[#2d2a4a]/10 bg-white hover:bg-[#2d2a4a]/5 transition-colors flex items-center justify-center"
-                      aria-label="Open menu"
+                      aria-label={t('Open menu', '打开菜单')}
                     >
                       <Menu className="w-5 h-5 text-[#2d2a4a]/70" />
                     </button>
@@ -450,19 +480,19 @@ export default function HomeDesignPage() {
                   <SheetContent side="right" className="w-[320px] sm:w-[360px]">
                     <SheetTitle className="text-[#1a1f36]">AI Zaha Home Design</SheetTitle>
                     <div className="mt-6 space-y-2">
-                      <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToGenerator(); }} label="Try Free" />
+                      <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToGenerator(); }} label={t('Try Free', '免费试用')} />
                       {appState === 'IDLE' && (
                         <>
-                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToSocialProof(); }} label="Real Transformations" />
-                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToStyles(); }} label="Styles" />
-                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToHowItWorks(); }} label="How it works" />
-                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToPricing(); }} label="Pricing" />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToSocialProof(); }} label={t('Real Transformations', '真实改造案例')} />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToStyles(); }} label={t('Styles', '风格模板')} />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToHowItWorks(); }} label={t('How it works', '使用流程')} />
+                          <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToPricing(); }} label={t('Pricing', '价格')} />
                           <MobileNavButton onClick={() => { setMobileNavOpen(false); scrollToFaq(); }} label="FAQ" />
                         </>
                       )}
                       <Link href="/blog" onClick={() => setMobileNavOpen(false)} className="block">
                         <div className="px-4 py-3 rounded-xl border border-[#2d2a4a]/10 hover:bg-[#2d2a4a]/5 transition-colors text-sm text-[#1a1f36] flex items-center justify-between">
-                          <span>Facade Tips</span>
+                          <span>{t('Facade Tips', '外立面技巧')}</span>
                           <ChevronRight className="w-4 h-4 text-[#2d2a4a]/50" />
                         </div>
                       </Link>
@@ -471,10 +501,10 @@ export default function HomeDesignPage() {
                     <div className="mt-6 space-y-3">
                       <div className="flex items-center gap-2 text-sm text-[#2d2a4a]/60">
                         <Globe className="w-4 h-4" />
-                        <span>Language</span>
+                        <span>{t('Language', '语言')}</span>
                       </div>
                       <select
-                        aria-label="Language"
+                        aria-label={t('Language', '语言')}
                         value={language}
                         onChange={(e) => setLanguage(e.target.value)}
                         className="w-full h-11 rounded-xl border border-[#2d2a4a]/15 bg-white px-3 text-sm text-[#1a1f36] focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
@@ -498,7 +528,7 @@ export default function HomeDesignPage() {
                             <button
                               onClick={() => { setMobileNavOpen(false); logout(); }}
                               className="p-2 rounded-lg hover:bg-[#2d2a4a]/5 transition-colors text-[#2d2a4a]/60 hover:text-red-500"
-                              aria-label="Logout"
+                              aria-label={t('Logout', '退出登录')}
                             >
                               <LogOut className="w-4 h-4" />
                             </button>
@@ -507,12 +537,12 @@ export default function HomeDesignPage() {
                           <div className="grid grid-cols-2 gap-3">
                             <Link href="/login" onClick={() => setMobileNavOpen(false)}>
                               <Button variant="outline" className="w-full h-11 rounded-xl border-[#2d2a4a]/20">
-                                Login
+                                {t('Login', '登录')}
                               </Button>
                             </Link>
                             <Link href="/register" onClick={() => setMobileNavOpen(false)}>
                               <Button className="w-full h-11 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white hover:opacity-90">
-                                Sign Up
+                                {t('Sign Up', '注册')}
                               </Button>
                             </Link>
                           </div>
@@ -541,17 +571,17 @@ export default function HomeDesignPage() {
               <div className="space-y-8">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full zaha-glass text-sm text-[#2d2a4a]">
                   <Sparkles className="w-4 h-4 text-[#00d4aa]" />
-                  <span className="font-medium">No sign up · 30-second preview · Pay only if you love it</span>
+                  <span className="font-medium">{t('No sign up · 30-second preview · Pay only if you love it', '无需注册 · 30 秒预览 · 喜欢再付费')}</span>
                 </div>
 
                 <h2 className="text-5xl sm:text-6xl font-bold text-[#1a1f36] leading-[0.98] tracking-tight">
-                  Make Your Home
+                  {t('Make Your Home', '让你的房子')}
                   <br />
-                  <span className="zaha-text-gradient">the Only One on the Block</span>
+                  <span className="zaha-text-gradient">{t('the Only One on the Block', '成为街区里最出众的一栋')}</span>
                 </h2>
 
                 <p className="text-base sm:text-lg text-[#2d2a4a]/70 max-w-xl leading-relaxed">
-                  Upload a photo, choose a style, and get a professional facade redesign preview in under 30 seconds.
+                  {t('Upload a photo, choose a style, and get a professional facade redesign preview in under 30 seconds.', '上传照片、选择风格，30 秒内获得专业级外立面改造预览。')}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -559,7 +589,7 @@ export default function HomeDesignPage() {
                     onClick={scrollToGenerator}
                     className="h-12 sm:h-14 px-7 sm:px-8 rounded-full font-semibold transition-all duration-500 bg-gradient-to-r from-[#1a1f36] to-[#2d2a4a] hover:shadow-[0_0_30px_rgba(0,212,170,0.25)] text-white"
                   >
-                    Try Free — No Sign Up
+                    {t('Try Free — No Sign Up', '免费试用 — 无需注册')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                   <Button
@@ -567,19 +597,19 @@ export default function HomeDesignPage() {
                     variant="outline"
                     className="h-12 sm:h-14 px-7 sm:px-8 rounded-full font-semibold border-[#1a1f36]/15 text-[#1a1f36] bg-white/50 hover:bg-white/70"
                   >
-                    See Real Transformations
+                    {t('See Real Transformations', '查看真实改造案例')}
                   </Button>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
                   <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
-                    Works best with a straight-on front photo
+                    {t('Works best with a straight-on front photo', '正面拍摄的外立面照片效果最佳')}
                   </div>
                   <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
-                    No subscription
+                    {t('No subscription', '无需订阅')}
                   </div>
                   <div className="px-3 py-1.5 rounded-full zaha-glass text-xs text-[#2d2a4a]/70">
-                    Instant download after unlock
+                    {t('Instant download after unlock', '解锁后即时下载')}
                   </div>
                 </div>
               </div>
@@ -599,13 +629,16 @@ export default function HomeDesignPage() {
                             <div className="flex items-center justify-between mb-4">
                               <div className="text-sm font-semibold text-[#1a1f36] tracking-tight">{slide.label}</div>
                               <div className="text-[10px] font-semibold uppercase tracking-widest text-[#2d2a4a]/60">
-                                Before / After
+                                {t('Before / After', '改造前 / 改造后')}
                               </div>
                             </div>
                             <BeforeAfterCard
                               beforeSrc={buildHeroImage(slide.beforePrompt)}
                               afterSrc={buildHeroImage(slide.afterPrompt)}
                               priority={idx === 0}
+                              beforeLabel={t('Before', '改造前')}
+                              afterLabel={t('After', '改造后')}
+                              compareAria={t('Compare before and after', '对比改造前后')}
                             />
                           </div>
                         </CarouselItem>
@@ -624,13 +657,13 @@ export default function HomeDesignPage() {
           <section id="social-proof" className="mb-16 sm:mb-20">
             <div className="flex items-end justify-between gap-6 mb-8">
               <div className="space-y-2">
-                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">Real Transformations</h3>
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">{t('Real Transformations', '真实改造案例')}</h3>
                 <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
                 <p className="text-sm sm:text-base text-[#2d2a4a]/60">
-                  A few examples of what you can get in under 30 seconds.
+                  {t('A few examples of what you can get in under 30 seconds.', '以下是你在 30 秒内可获得的效果示例。')}
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">Before / After examples</div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">{t('Before / After examples', '改造前后示例')}</div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -639,24 +672,36 @@ export default function HomeDesignPage() {
                 subtitle="Austin, TX"
                 beforeSrc={buildSocialProofImage('front view photo of a typical american suburban two story house, neutral exterior, daylight, real estate photography, high detail')}
                 afterSrc={buildSocialProofImage('modern farmhouse home facade renovation, white board and batten siding, black metal window frames, natural wood porch, standing seam metal roof accents, warm welcoming, golden hour, photorealistic, high detail')}
+                beforeAfterLabel={t('Before / After', '改造前 / 改造后')}
+                beforeLabel={t('Before', '改造前')}
+                afterLabel={t('After', '改造后')}
               />
               <SocialProofCard
                 title="Scandinavian Minimal"
                 subtitle="Vancouver, BC"
                 beforeSrc={buildSocialProofImage('front view photo of a modern suburban house exterior, neutral facade, daylight, real estate photography, high detail')}
                 afterSrc={buildSocialProofImage('scandinavian minimalist home facade renovation, light grey and white exterior, large floor to ceiling glass, flat or low slope roof, warm natural wood entry detail, clean landscaping, soft overcast daylight, photorealistic, high detail')}
+                beforeAfterLabel={t('Before / After', '改造前 / 改造后')}
+                beforeLabel={t('Before', '改造前')}
+                afterLabel={t('After', '改造后')}
               />
               <SocialProofCard
                 title="Mediterranean Revival"
                 subtitle="San Diego, CA"
                 beforeSrc={buildSocialProofImage('front view photo of a typical stucco suburban house exterior, neutral colors, daylight, real estate photography, high detail')}
                 afterSrc={buildSocialProofImage('mediterranean revival home facade renovation, terracotta barrel tile roof, warm creamy stucco walls, arched entry, wrought iron details, stone accents, lush landscaping, golden hour, photorealistic, high detail')}
+                beforeAfterLabel={t('Before / After', '改造前 / 改造后')}
+                beforeLabel={t('Before', '改造前')}
+                afterLabel={t('After', '改造后')}
               />
               <SocialProofCard
                 title="Industrial Loft"
                 subtitle="Denver, CO"
                 beforeSrc={buildSocialProofImage('front view photo of a plain suburban house exterior, neutral facade, daylight, real estate photography, high detail')}
                 afterSrc={buildSocialProofImage('industrial loft style home facade renovation, dark grey concrete texture, exposed brick accents, black steel canopy, asymmetrical facade composition, large black framed windows, moody overcast light, photorealistic, high detail')}
+                beforeAfterLabel={t('Before / After', '改造前 / 改造后')}
+                beforeLabel={t('Before', '改造前')}
+                afterLabel={t('After', '改造后')}
               />
             </div>
           </section>
@@ -666,13 +711,13 @@ export default function HomeDesignPage() {
           <section id="styles" className="mb-16 sm:mb-20">
             <div className="flex items-end justify-between gap-6 mb-8">
               <div className="space-y-2">
-                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">Parametric Presets</h3>
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">{t('Parametric Presets', '参数化风格预设')}</h3>
                 <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
                 <p className="text-sm sm:text-base text-[#2d2a4a]/60">
-                  Pick a style DNA to prefill your prompt, then upload your photo.
+                  {t('Pick a style DNA to prefill your prompt, then upload your photo.', '选择风格 DNA 自动填充提示词，然后上传你的照片。')}
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">6 curated styles</div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">{t('6 curated styles', '6 种精选风格')}</div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -693,33 +738,33 @@ export default function HomeDesignPage() {
           <section id="how-it-works" className="mb-16 sm:mb-20">
             <div className="flex items-end justify-between gap-6 mb-8">
               <div className="space-y-2">
-                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">How it works</h3>
+                <h3 className="text-3xl font-bold text-[#1a1f36] tracking-tight">{t('How it works', '使用流程')}</h3>
                 <div className="h-1 w-20 rounded-full bg-gradient-to-r from-[#00d4aa] to-[#0077ff]" />
                 <p className="text-sm sm:text-base text-[#2d2a4a]/60">
-                  Upload → Choose style → Get your redesign.
+                  {t('Upload → Choose style → Get your redesign.', '上传照片 → 选择风格 → 获取改造结果。')}
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">3 simple steps</div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">{t('3 simple steps', '3 个简单步骤')}</div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <HowItWorksStep
                 step={1}
                 icon={<Upload className="w-6 h-6" />}
-                title="Upload your photo"
-                description="Use a straight-on front view for the best result. JPG/PNG supported."
+                title={t('Upload your photo', '上传你的照片')}
+                description={t('Use a straight-on front view for the best result. JPG/PNG supported.', '建议使用正面视角，效果最佳。支持 JPG/PNG。')}
               />
               <HowItWorksStep
                 step={2}
                 icon={<Palette className="w-6 h-6" />}
-                title="Choose a style"
-                description="Pick a curated look or write your own prompt to guide the redesign."
+                title={t('Choose a style', '选择风格')}
+                description={t('Pick a curated look or write your own prompt to guide the redesign.', '可选择精选风格，也可自定义提示词引导改造。')}
               />
               <HowItWorksStep
                 step={3}
                 icon={<Wand2 className="w-6 h-6" />}
-                title="Get your design"
-                description="See a professional preview in ~30 seconds, then decide if you want to unlock."
+                title={t('Get your design', '获取改造结果')}
+                description={t('See a professional preview in ~30 seconds, then decide if you want to unlock.', '约 30 秒获得专业预览，再决定是否解锁高清图。')}
               />
             </div>
           </section>
@@ -728,51 +773,51 @@ export default function HomeDesignPage() {
         {/* Workflow Steps Indicator */}
         {appState === 'UPLOADED' && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            <StepIndicator label="Upload" active={true} done={false} />
+            <StepIndicator label={t('Upload', '上传')} active={true} done={false} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Effect" active={false} done={false} />
+            <StepIndicator label={t('Effect', '效果图')} active={false} done={false} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Explosion" active={false} done={false} />
+            <StepIndicator label={t('Explosion', '爆炸图')} active={false} done={false} />
           </div>
         )}
 
         {(appState === 'GENERATING_EFFECT') && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            <StepIndicator label="Upload" active={false} done={true} />
+            <StepIndicator label={t('Upload', '上传')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Effect" active={true} done={false} />
+            <StepIndicator label={t('Effect', '效果图')} active={true} done={false} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Explosion" active={false} done={false} />
+            <StepIndicator label={t('Explosion', '爆炸图')} active={false} done={false} />
           </div>
         )}
 
         {appState === 'EFFECT_READY' && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            <StepIndicator label="Upload" active={false} done={true} />
+            <StepIndicator label={t('Upload', '上传')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Effect" active={false} done={true} />
+            <StepIndicator label={t('Effect', '效果图')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Explosion" active={false} done={false} />
+            <StepIndicator label={t('Explosion', '爆炸图')} active={false} done={false} />
           </div>
         )}
 
         {(appState === 'GENERATING_EXPLOSION') && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            <StepIndicator label="Upload" active={false} done={true} />
+            <StepIndicator label={t('Upload', '上传')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Effect" active={false} done={true} />
+            <StepIndicator label={t('Effect', '效果图')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Explosion" active={true} done={false} />
+            <StepIndicator label={t('Explosion', '爆炸图')} active={true} done={false} />
           </div>
         )}
 
         {appState === 'COMPLETED' && (
           <div className="flex items-center justify-center gap-2 mb-8">
-            <StepIndicator label="Upload" active={false} done={true} />
+            <StepIndicator label={t('Upload', '上传')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Effect" active={false} done={true} />
+            <StepIndicator label={t('Effect', '效果图')} active={false} done={true} />
             <ChevronRight className="w-4 h-4 text-[#2d2a4a]/30" />
-            <StepIndicator label="Explosion" active={false} done={true} />
+            <StepIndicator label={t('Explosion', '爆炸图')} active={false} done={true} />
           </div>
         )}
 
@@ -784,16 +829,16 @@ export default function HomeDesignPage() {
             {/* IDLE & UPLOADED - Show image uploader + description */}
             {(appState === 'IDLE' || appState === 'UPLOADED') && (
               <div className="space-y-6">
-                <ImageUploader onImageUploaded={handleImageUploaded} />
+                <ImageUploader onImageUploaded={handleImageUploaded} language={isZh ? 'zh' : 'en'} />
                 {uploadedImage && (
-                  <DescriptionInput onSubmit={() => {}} />
+                  <DescriptionInput onSubmit={() => {}} language={isZh ? 'zh' : 'en'} />
                 )}
               </div>
             )}
 
             {/* GENERATING_EFFECT - Show loading */}
             {appState === 'GENERATING_EFFECT' && (
-              <LoadingState progress={progress} message="Generating effect image..." />
+              <LoadingState progress={progress} message={t('Generating effect image...', '正在生成效果图...')} language={isZh ? 'zh' : 'en'} />
             )}
 
             {/* EFFECT_READY - Show effect image for confirmation */}
@@ -801,10 +846,10 @@ export default function HomeDesignPage() {
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-[#1a1f36] mb-2">
-                    Effect Image Generated!
+                    {t('Effect Image Generated!', '效果图已生成！')}
                   </h3>
                   <p className="text-sm text-[#2d2a4a]/60">
-                    Review your facade design and confirm to generate the explosion diagram
+                    {t('Review your facade design and confirm to generate the explosion diagram', '请先查看效果图，确认后继续生成爆炸图')}
                   </p>
                 </div>
                 
@@ -812,7 +857,7 @@ export default function HomeDesignPage() {
                 <div className="relative rounded-2xl overflow-hidden border border-[#2d2a4a]/10">
                   <Image
                     src={effectImageUrl}
-                    alt="Effect preview"
+                    alt={t('Effect preview', '效果图预览')}
                     width={1600}
                     height={900}
                     sizes="(max-width: 1024px) 100vw, 720px"
@@ -828,13 +873,13 @@ export default function HomeDesignPage() {
                     className="flex-1 h-12 rounded-xl font-medium border-[#2d2a4a]/20 text-[#2d2a4a] hover:bg-[#f0f0f5]"
                   >
                     <RotateCcw className="w-4 h-4 mr-2" />
-                    Regenerate
+                    {t('Regenerate', '重新生成')}
                   </Button>
                   <Button
                     onClick={handleConfirmEffect}
                     className="flex-1 h-12 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white"
                   >
-                    Generate Explosion
+                    {t('Generate Explosion', '生成爆炸图')}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
@@ -843,7 +888,7 @@ export default function HomeDesignPage() {
 
             {/* GENERATING_EXPLOSION - Show loading */}
             {appState === 'GENERATING_EXPLOSION' && (
-              <LoadingState progress={progress} message="Generating explosion diagram..." />
+              <LoadingState progress={progress} message={t('Generating explosion diagram...', '正在生成爆炸图...')} language={isZh ? 'zh' : 'en'} />
             )}
 
             {/* COMPLETED - Show results */}
@@ -851,6 +896,7 @@ export default function HomeDesignPage() {
               <ResultViewer
                 result={generationResult}
                 onRegenerate={handleRegenerateEffect}
+                language={isZh ? 'zh' : 'en'}
               />
             )}
 
@@ -862,7 +908,7 @@ export default function HomeDesignPage() {
                   onClick={handleStartOver}
                   className="px-6 py-2 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white rounded-xl"
                 >
-                  Try Again
+                  {t('Try Again', '重试')}
                 </button>
               </div>
             )}
@@ -877,7 +923,7 @@ export default function HomeDesignPage() {
               onClick={handleStartOver}
               className="text-sm text-[#2d2a4a]/60 hover:text-[#1a1f36] transition-colors"
             >
-              Start Over
+              {t('Start Over', '重新开始')}
             </button>
           </div>
         )}
@@ -891,8 +937,8 @@ export default function HomeDesignPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               }
-              title="Upload Photo"
-              description="Simply upload your facade photo. No professional photography needed."
+              title={t('Upload Photo', '上传照片')}
+              description={t('Simply upload your facade photo. No professional photography needed.', '直接上传外立面照片，无需专业摄影。')}
             />
             <FeatureCard
               icon={
@@ -900,8 +946,8 @@ export default function HomeDesignPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               }
-              title="Choose Style"
-              description="Select from 6 curated templates or describe your own vision."
+              title={t('Choose Style', '选择风格')}
+              description={t('Select from 6 curated templates or describe your own vision.', '从 6 个精选模板中选择，或输入你的自定义想法。')}
             />
             <FeatureCard
               icon={
@@ -909,8 +955,8 @@ export default function HomeDesignPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               }
-              title="Get Results"
-              description="Receive photorealistic renders with detailed material specifications."
+              title={t('Get Results', '获得结果')}
+              description={t('Receive photorealistic renders with detailed material specifications.', '获取高拟真效果图及详细材料说明。')}
             />
           </div>
         )}
@@ -919,48 +965,48 @@ export default function HomeDesignPage() {
           <section id="pricing" className="mt-14 sm:mt-16 mb-12">
             <div className="flex items-end justify-between gap-6 mb-6">
               <div>
-                <h3 className="text-2xl font-bold text-[#1a1f36]">Pricing</h3>
+                <h3 className="text-2xl font-bold text-[#1a1f36]">{t('Pricing', '价格')}</h3>
                 <p className="text-sm text-[#2d2a4a]/60 mt-1">
-                  Start free. Unlock only if you love it. No subscription.
+                  {t('Start free. Unlock only if you love it. No subscription.', '先免费体验，满意再解锁，无需订阅。')}
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">One-time payment</div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">{t('One-time payment', '一次性付费')}</div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <PricingCard
                 title="$0 Preview"
-                subtitle="Try it before you pay"
+                subtitle={t('Try it before you pay', '先试用后付费')}
                 emphasized={false}
                 items={[
-                  'Upload 1 facade photo',
-                  'Pick a style or write your own prompt',
-                  'See a fast preview in ~30 seconds',
-                  'No sign up needed',
+                  t('Upload 1 facade photo', '上传 1 张外立面照片'),
+                  t('Pick a style or write your own prompt', '选择风格或自定义提示词'),
+                  t('See a fast preview in ~30 seconds', '约 30 秒获得预览'),
+                  t('No sign up needed', '无需注册'),
                 ]}
-                ctaLabel="Try Free — No Sign Up"
+                ctaLabel={t('Try Free — No Sign Up', '免费试用 — 无需注册')}
                 onCta={scrollToGenerator}
               />
               <PricingCard
                 title="$19 Unlock"
-                subtitle="Pay only if you love it"
+                subtitle={t('Pay only if you love it', '满意再付费')}
                 emphasized={true}
-                badge="Recommended"
+                badge={t('Recommended', '推荐')}
                 items={[
-                  'High-resolution download',
-                  'Instant access after payment',
-                  'One-time payment (no subscription)',
-                  'Commercial-ready presentation',
+                  t('High-resolution download', '高清下载'),
+                  t('Instant access after payment', '支付后立即解锁'),
+                  t('One-time payment (no subscription)', '一次性付费（无订阅）'),
+                  t('Commercial-ready presentation', '可用于商业展示'),
                 ]}
-                ctaLabel="Unlock HD — $19"
+                ctaLabel={t('Unlock HD — $19', '解锁高清 — $19')}
                 onCta={scrollToGenerator}
               />
             </div>
 
             <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <TrustPill icon={<Shield className="w-4 h-4" />} label="Your photo stays private" />
-              <TrustPill icon={<Clock className="w-4 h-4" />} label="~30-second preview" />
-              <TrustPill icon={<Star className="w-4 h-4" />} label="Pay only if you love it" />
+              <TrustPill icon={<Shield className="w-4 h-4" />} label={t('Your photo stays private', '你的图片隐私安全')} />
+              <TrustPill icon={<Clock className="w-4 h-4" />} label={t('~30-second preview', '约 30 秒预览')} />
+              <TrustPill icon={<Star className="w-4 h-4" />} label={t('Pay only if you love it', '满意再付费')} />
             </div>
           </section>
         )}
@@ -971,60 +1017,60 @@ export default function HomeDesignPage() {
               <div>
                 <h3 className="text-2xl font-bold text-[#1a1f36]">FAQ</h3>
                 <p className="text-sm text-[#2d2a4a]/60 mt-1">
-                  Quick answers to the most common questions.
+                  {t('Quick answers to the most common questions.', '常见问题快速解答。')}
                 </p>
               </div>
-              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">Always optional</div>
+              <div className="hidden sm:block text-xs text-[#2d2a4a]/50">{t('Always optional', '始终可选')}</div>
             </div>
 
             <div className="rounded-[28px] zaha-glass border border-white/40 overflow-hidden">
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="q1" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    What if I don’t like the result?
+                    {t('What if I don’t like the result?', '如果我不喜欢结果怎么办？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    You can regenerate and try a different style. Only unlock when you’re happy with what you see.
+                    {t('You can regenerate and try a different style. Only unlock when you’re happy with what you see.', '你可以重新生成并尝试其他风格。满意后再解锁。')}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="q2" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    Is my photo data safe?
+                    {t('Is my photo data safe?', '我的图片数据安全吗？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    Your upload is used only to generate your preview. We don’t sell your data.
+                    {t('Your upload is used only to generate your preview. We don’t sell your data.', '上传的图片仅用于生成预览，我们不会出售你的数据。')}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="q3" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    How long does generation take?
+                    {t('How long does generation take?', '生成大概要多久？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    Most previews finish in about 30 seconds, depending on image size and traffic.
+                    {t('Most previews finish in about 30 seconds, depending on image size and traffic.', '大多数预览约 30 秒完成，具体取决于图片大小和当前负载。')}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="q4" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    Can I use this for a new build?
+                    {t('Can I use this for a new build?', '可以用于新建项目吗？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    Yes. It works best with a front-facing exterior image or a clean elevation render.
+                    {t('Yes. It works best with a front-facing exterior image or a clean elevation render.', '可以。建议使用正立面照片或干净的立面图，效果最佳。')}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="q5" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    Do I need design experience?
+                    {t('Do I need design experience?', '需要设计经验吗？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    No. Pick a style and you’ll get a guided, professional-looking result automatically.
+                    {t('No. Pick a style and you’ll get a guided, professional-looking result automatically.', '不需要。选择风格后会自动生成专业效果。')}
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="q6" className="px-4 sm:px-6">
                   <AccordionTrigger className="text-left">
-                    Why is the preview blurred?
+                    {t('Why is the preview blurred?', '为什么预览是模糊的？')}
                   </AccordionTrigger>
                   <AccordionContent>
-                    The preview is designed to help you validate direction first. Unlocking provides the high-resolution version for download.
+                    {t('The preview is designed to help you validate direction first. Unlocking provides the high-resolution version for download.', '预览用于先确认设计方向；解锁后可下载高清版本。')}
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
@@ -1044,50 +1090,50 @@ export default function HomeDesignPage() {
                 </div>
                 <div>
                   <div className="text-base font-semibold text-[#1a1f36]">AI Zaha Home Design</div>
-                  <div className="text-xs text-[#2d2a4a]/60">Transform your facade</div>
+                  <div className="text-xs text-[#2d2a4a]/60">{t('Transform your facade', '重塑你的建筑外立面')}</div>
                 </div>
               </div>
               <div className="text-sm text-[#2d2a4a]/60">
-                Upload a photo and get a fast facade redesign preview. Pay only if you love it.
+                {t('Upload a photo and get a fast facade redesign preview. Pay only if you love it.', '上传照片，快速获得外立面改造预览。满意再付费。')}
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="text-sm font-semibold text-[#1a1f36]">Product</div>
+              <div className="text-sm font-semibold text-[#1a1f36]">{t('Product', '产品')}</div>
               <div className="space-y-2">
-                <FooterButton onClick={scrollToGenerator} label="Try Free" />
-                <FooterButton onClick={scrollToSocialProof} label="Transformations" />
-                <FooterButton onClick={scrollToStyles} label="Styles" />
-                <FooterButton onClick={scrollToHowItWorks} label="How it works" />
+                <FooterButton onClick={scrollToGenerator} label={t('Try Free', '免费试用')} />
+                <FooterButton onClick={scrollToSocialProof} label={t('Transformations', '改造案例')} />
+                <FooterButton onClick={scrollToStyles} label={t('Styles', '风格模板')} />
+                <FooterButton onClick={scrollToHowItWorks} label={t('How it works', '使用流程')} />
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="text-sm font-semibold text-[#1a1f36]">Pricing</div>
+              <div className="text-sm font-semibold text-[#1a1f36]">{t('Pricing', '价格')}</div>
               <div className="space-y-2">
-                <FooterButton onClick={scrollToPricing} label="$0 Preview" />
-                <FooterButton onClick={scrollToPricing} label="$19 Unlock" />
+                <FooterButton onClick={scrollToPricing} label={t('$0 Preview', '$0 预览')} />
+                <FooterButton onClick={scrollToPricing} label={t('$19 Unlock', '$19 解锁')} />
                 <FooterButton onClick={scrollToFaq} label="FAQ" />
                 <Link href="/blog" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
-                  Facade Tips
+                  {t('Facade Tips', '外立面技巧')}
                 </Link>
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="text-sm font-semibold text-[#1a1f36]">Legal</div>
+              <div className="text-sm font-semibold text-[#1a1f36]">{t('Legal', '法律条款')}</div>
               <div className="space-y-2">
                 <Link href="/privacy" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
-                  Privacy Policy
+                  {t('Privacy Policy', '隐私政策')}
                 </Link>
                 <Link href="/terms" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
-                  Terms of Service
+                  {t('Terms of Service', '服务条款')}
                 </Link>
                 <Link href="/refund" className="block text-sm text-[#2d2a4a]/60 hover:text-[#00d4aa] transition-colors">
-                  Refund Policy
+                  {t('Refund Policy', '退款政策')}
                 </Link>
                 <div className="text-xs text-[#2d2a4a]/40">
-                  AI-generated results. Please review before use.
+                  {t('AI-generated results. Please review before use.', 'AI 生成结果，请在使用前自行审核。')}
                 </div>
               </div>
             </div>
@@ -1098,7 +1144,7 @@ export default function HomeDesignPage() {
               © {new Date().getFullYear()} AI Zaha Home Design
             </div>
             <div className="text-xs text-[#2d2a4a]/40">
-              No subscription · Pay only if you love it
+              {t('No subscription · Pay only if you love it', '无需订阅 · 满意再付费')}
             </div>
           </div>
         </div>
@@ -1111,10 +1157,16 @@ function BeforeAfterCard({
   beforeSrc,
   afterSrc,
   priority,
+  beforeLabel,
+  afterLabel,
+  compareAria,
 }: {
   beforeSrc: string;
   afterSrc: string;
   priority?: boolean;
+  beforeLabel: string;
+  afterLabel: string;
+  compareAria: string;
 }) {
   const [value, setValue] = useState(58);
 
@@ -1123,7 +1175,7 @@ function BeforeAfterCard({
       <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
         <Image
           src={beforeSrc}
-          alt="Before"
+          alt={beforeLabel}
           fill
           sizes="(max-width: 1024px) 100vw, 520px"
           className="object-cover"
@@ -1134,7 +1186,7 @@ function BeforeAfterCard({
           <div className="relative h-full w-[100%]">
             <Image
               src={afterSrc}
-              alt="After"
+              alt={afterLabel}
               fill
               sizes="(max-width: 1024px) 100vw, 520px"
               className="object-cover"
@@ -1154,10 +1206,10 @@ function BeforeAfterCard({
         </div>
 
         <div className="absolute left-3 top-3 inline-flex items-center rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
-          Before
+          {beforeLabel}
         </div>
         <div className="absolute right-3 top-3 inline-flex items-center rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white">
-          After
+          {afterLabel}
         </div>
       </div>
 
@@ -1168,7 +1220,7 @@ function BeforeAfterCard({
         value={value}
         onChange={(e) => setValue(Number(e.target.value))}
         className="w-full accent-[#00d4aa]"
-        aria-label="Compare before and after"
+        aria-label={compareAria}
       />
     </div>
   );
@@ -1324,11 +1376,17 @@ function SocialProofCard({
   subtitle,
   beforeSrc,
   afterSrc,
+  beforeAfterLabel,
+  beforeLabel,
+  afterLabel,
 }: {
   title: string;
   subtitle: string;
   beforeSrc: string;
   afterSrc: string;
+  beforeAfterLabel: string;
+  beforeLabel: string;
+  afterLabel: string;
 }) {
   return (
     <div className="rounded-[28px] zaha-glass border border-white/40 overflow-hidden zaha-card-hover">
@@ -1340,7 +1398,7 @@ function SocialProofCard({
           </div>
           <div className="hidden sm:flex items-center gap-2">
             <div className="px-2.5 py-1 rounded-full bg-gradient-to-r from-[#00d4aa]/10 to-[#0077ff]/10 text-[11px] text-[#2d2a4a]">
-              Before / After
+              {beforeAfterLabel}
             </div>
           </div>
         </div>
@@ -1349,26 +1407,26 @@ function SocialProofCard({
           <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
             <Image
               src={beforeSrc}
-              alt={`${title} before`}
+              alt={`${title} ${beforeLabel}`}
               fill
               sizes="(max-width: 640px) 100vw, 260px"
               className="object-cover"
             />
             <div className="absolute left-2 top-2 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
-              Before
+              {beforeLabel}
             </div>
           </div>
 
           <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-[#2d2a4a]/10 bg-[#fafbfc]">
             <Image
               src={afterSrc}
-              alt={`${title} after`}
+              alt={`${title} ${afterLabel}`}
               fill
               sizes="(max-width: 640px) 100vw, 260px"
               className="object-cover"
             />
             <div className="absolute left-2 top-2 inline-flex items-center rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">
-              After
+              {afterLabel}
             </div>
           </div>
         </div>
