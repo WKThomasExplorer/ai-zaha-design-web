@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { Sparkles, Home, Globe, ChevronRight, CheckCircle2, ArrowRight, RotateCcw, User, LogOut, Upload, Palette, Wand2, Menu, Check, Star, Shield, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,8 @@ type AppState =
 // Prompt for explosion diagram generation
 const EXPLOSION_PROMPT = `You are a professional building facade renovation expert. Please analyze this image and generate an explosion diagram showing the main components and materials used in the building facade. Mark the materials on the diagram. Please use English for all text on the diagram.`;
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+
 export default function HomeDesignPage() {
   const { user, loading, logout } = useAuth();
   const [appState, setAppState] = useState<AppState>('IDLE');
@@ -42,6 +45,9 @@ export default function HomeDesignPage() {
   const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
   const [heroCarouselApi, setHeroCarouselApi] = useState<CarouselApi | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileHint, setTurnstileHint] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
   const isGeneratingEffectRef = useRef(false);
   const isGeneratingExplosionRef = useRef(false);
   const effectRequestIdRef = useRef(0);
@@ -189,10 +195,25 @@ export default function HomeDesignPage() {
   // Generate effect image only
   const generateEffectImage = useCallback(async () => {
     if (!uploadedImage || isGeneratingEffectRef.current) return;
+
+    const isAnonymous = !user;
+    if (isAnonymous) {
+      if (!TURNSTILE_SITE_KEY) {
+        setError(t('Verification is not configured. Please try again later.', '人机验证未配置，请稍后重试。'));
+        setAppState('ERROR');
+        return;
+      }
+      if (!turnstileToken) {
+        setTurnstileHint(t('Please complete human verification before generating.', '请先完成人机验证再生成。'));
+        return;
+      }
+    }
+
     isGeneratingEffectRef.current = true;
     const requestId = ++effectRequestIdRef.current;
 
     const descText = localStorage.getItem('design_description') || 'modern facade renovation';
+    setTurnstileHint(null);
     setAppState('GENERATING_EFFECT');
     setProgress(0);
 
@@ -212,12 +233,17 @@ export default function HomeDesignPage() {
           imageBase64,
           description: descText,
           type: 'effect',
+          turnstileToken: isAnonymous ? turnstileToken : undefined,
         }),
       });
 
       const effectData = await effectResponse.json();
 
       if (!effectData.success) {
+        if (effectResponse.status === 403 || effectResponse.status === 429) {
+          setTurnstileToken('');
+          turnstileRef.current?.reset();
+        }
         throw new Error(effectData.error || t('Failed to generate effect image', '效果图生成失败'));
       }
 
@@ -237,7 +263,7 @@ export default function HomeDesignPage() {
         isGeneratingEffectRef.current = false;
       }
     }
-  }, [uploadedImage, t]);
+  }, [uploadedImage, turnstileToken, t, user]);
 
   // Generate explosion diagram (after user confirms effect image)
   const generateExplosionDiagram = useCallback(async () => {
@@ -364,6 +390,9 @@ export default function HomeDesignPage() {
     setGenerationResult(null);
     setProgress(0);
     setError(null);
+    setTurnstileHint(null);
+    setTurnstileToken('');
+    turnstileRef.current?.reset();
     localStorage.removeItem('design_description');
   }, []);
 
@@ -831,7 +860,43 @@ export default function HomeDesignPage() {
               <div className="space-y-6">
                 <ImageUploader onImageUploaded={handleImageUploaded} language={isZh ? 'zh' : 'en'} />
                 {uploadedImage && (
-                  <DescriptionInput onSubmit={() => {}} language={isZh ? 'zh' : 'en'} />
+                  <div className="space-y-4">
+                    <DescriptionInput onSubmit={() => {}} language={isZh ? 'zh' : 'en'} />
+                    {!user && (
+                      <div className="rounded-xl border border-[#2d2a4a]/10 bg-white/60 p-4 space-y-3">
+                        <p className="text-sm text-[#2d2a4a]/70">
+                          {t('Please complete human verification before generating your free preview.', '免费预览前请先完成人机验证。')}
+                        </p>
+                        {TURNSTILE_SITE_KEY ? (
+                          <div className="flex justify-center">
+                            <Turnstile
+                              ref={turnstileRef}
+                              siteKey={TURNSTILE_SITE_KEY}
+                              onSuccess={(token) => {
+                                setTurnstileToken(token);
+                                setTurnstileHint(null);
+                              }}
+                              onExpire={() => {
+                                setTurnstileToken('');
+                              }}
+                              onError={() => {
+                                setTurnstileToken('');
+                                setTurnstileHint(t('Verification failed, please retry.', '验证失败，请重试。'));
+                              }}
+                              options={{ theme: 'light' }}
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-amber-600 text-center">
+                            {t('Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY', '缺少 NEXT_PUBLIC_TURNSTILE_SITE_KEY 配置')}
+                          </p>
+                        )}
+                        {turnstileHint && (
+                          <p className="text-sm text-red-500 text-center">{turnstileHint}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

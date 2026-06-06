@@ -1,12 +1,9 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
-import { Upload, X, AlertCircle, Lock, ArrowRight } from 'lucide-react';
+import { Upload, X, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/context/auth-context';
 import type { UploadedImage } from '@/types';
 
 interface ImageUploaderProps {
@@ -18,7 +15,6 @@ interface ImageUploaderProps {
 export function ImageUploader({ onImageUploaded, className, language = 'en' }: ImageUploaderProps) {
   const isZh = language === 'zh';
   const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
-  const { user, loading } = useAuth();
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,14 +51,12 @@ export function ImageUploader({ onImageUploaded, className, language = 'en' }: I
     async (file: File): Promise<UploadedImage | null> => {
       setError(null);
 
-      // Check file type
       const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setError(t('Please upload a JPG, PNG, or WebP image', '请上传 JPG、PNG 或 WebP 图片'));
         return null;
       }
 
-      // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError(t('Image size must be less than 10MB', '图片大小需小于 10MB'));
         return null;
@@ -74,7 +68,6 @@ export function ImageUploader({ onImageUploaded, className, language = 'en' }: I
           const dataUrl = e.target?.result as string;
           const img = new window.Image();
           img.onload = () => {
-            // Check minimum dimensions
             if (img.width < 400 || img.height < 400) {
               setError(t('Image must be at least 400x400 pixels', '图片尺寸至少为 400x400 像素'));
               resolve(null);
@@ -150,43 +143,6 @@ export function ImageUploader({ onImageUploaded, className, language = 'en' }: I
     setPreview(null);
     setError(null);
   }, []);
-
-  // Show login prompt if user is not logged in
-  if (!loading && !user) {
-    return (
-      <div className={cn('space-y-4', className)}>
-        <div className="relative rounded-2xl border-2 border-[#2d2a4a]/10 bg-gradient-to-br from-[#1a1f36]/5 to-[#2d2a4a]/5 overflow-hidden">
-          <div className="flex flex-col items-center justify-center p-12 min-h-[300px] text-center">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00d4aa]/20 to-[#0077ff]/20 flex items-center justify-center mb-6">
-              <Lock className="w-10 h-10 text-[#00d4aa]" />
-            </div>
-            <h3 className="text-xl font-semibold text-[#1a1f36] mb-2">
-              {t('Login Required', '请先登录')}
-            </h3>
-            <p className="text-[#2d2a4a]/60 mb-6 max-w-md">
-              {t(
-                'Please login to upload your facade image and access all features. Create a free account to get started!',
-                '请先登录后上传外立面图片并使用全部功能。注册免费账号即可开始。'
-              )}
-            </p>
-            <div className="flex items-center gap-4">
-              <Link href="/login">
-                <Button className="bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:opacity-90 text-white">
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  {t('Login', '登录')}
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button variant="outline" className="border-[#00d4aa] text-[#00d4aa] hover:bg-[#00d4aa]/10">
-                  {t('Create Account', '创建账号')}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={cn('space-y-4', className)}>

@@ -6,6 +6,8 @@ import { extractTokenFromHeader, verifyToken } from '@/lib/jwt';
 import { getDb } from '@/storage/database/db';
 import { generationPackages, generationRuns } from '@/storage/database/shared/schema';
 import { and, desc, eq } from 'drizzle-orm';
+import { verifyTurnstileToken } from '@/lib/turnstile';
+import { consumeRateLimit } from '@/lib/rate-limit';
 
 /** AI 返回的临时 URL 在可配置时先镜像到 R2，数据库与接口统一返回可长期访问的地址。 */
 async function resolveResultImageForStorage(
@@ -21,10 +23,17 @@ async function resolveResultImageForStorage(
   return mirrorTempImageUrlToR2(tempUrl, kind);
 }
 
+function getRequestIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIp = request.headers.get('x-real-ip');
+  const ip = forwarded?.split(',')[0]?.trim() || realIp?.trim();
+  return ip || 'unknown';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { imageBase64, effectImageUrl, description, type } = body;
+    const { imageBase64, effectImageUrl, description, type, turnstileToken } = body;
 
     if (!description) {
       return NextResponse.json(
@@ -37,6 +46,45 @@ export async function POST(request: NextRequest) {
     const token = extractTokenFromHeader(authHeader);
     const payload = token ? verifyToken(token) : null;
     const userId = payload?.id ?? null;
+    const isAnonymous = !userId;
+    const requestIp = getRequestIp(request);
+
+    if (isAnonymous) {
+      if (typeof turnstileToken !== 'string' || !turnstileToken) {
+        return NextResponse.json(
+          { success: false, error: 'Please complete human verification' },
+          { status: 400 }
+        );
+      }
+
+      const turnstileOk = await verifyTurnstileToken(turnstileToken, requestIp);
+      if (!turnstileOk) {
+        return NextResponse.json(
+          { success: false, error: 'Human verification failed, please retry' },
+          { status: 403 }
+        );
+      }
+
+      const rate = consumeRateLimit(`generate:${requestIp}:${type}`, {
+        windowMs: 24 * 60 * 60 * 1000,
+        maxRequests: 3,
+      });
+
+      if (rate.limited) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Free preview limit reached. Please try again later or sign in.`,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(rate.retryAfterSeconds),
+            },
+          }
+        );
+      }
+    }
 
     const db = getDb();
     const model = process.env.ARK_IMAGE_MODEL || 'doubao-seedream-4-0-250828';
