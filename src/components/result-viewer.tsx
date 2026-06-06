@@ -6,6 +6,7 @@ import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package, Mes
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { GenerationResult } from '@/types';
+import { usePostHog } from 'posthog-js/react';
 
 interface ResultViewerProps {
   result: GenerationResult;
@@ -17,6 +18,7 @@ interface ResultViewerProps {
 export function ResultViewer({ result, onRegenerate, className, language = 'en' }: ResultViewerProps) {
   const isZh = language === 'zh';
   const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
+  const posthog = usePostHog();
   const [activeTab, setActiveTab] = useState<'effect' | 'explosion'>('effect');
   const [downloading, setDownloading] = useState<string | null>(null);
   const [feedbackRating, setFeedbackRating] = useState<'love_it' | 'needs_changes' | 'not_useful' | null>(null);
@@ -158,14 +160,20 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
       }
 
       setIntentMessage(t('Saved! We will email your HD unlock beta access soon.', '已记录！我们会通过邮件发送 HD 解锁测试资格。'));
+      posthog?.capture('purchase_intent_submitted', {
+        product: 'hd_unlock_waitlist',
+        price: '$19',
+      });
       setIntentEmail('');
     } catch (error) {
+      posthog?.capture('purchase_intent_failed', {
+        error: error instanceof Error ? error.message : 'unknown_error',
+      });
       setIntentMessage(error instanceof Error ? error.message : t('Failed to save your request', '提交失败'));
     } finally {
       setIntentSubmitting(false);
     }
-  }, [intentEmail, intentSubmitting, result, t]);
-
+  }, [intentEmail, intentSubmitting, posthog, result, t]);
   const submitFeedback = useCallback(async () => {
     if (!feedbackRating || feedbackSubmitting) {
       return;
@@ -196,14 +204,17 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
       }
 
       setFeedbackMessage(t('Thanks for the feedback!', '感谢反馈！'));
+      posthog?.capture('feedback_submitted', {
+        rating: feedbackRating,
+        has_email: Boolean(feedbackEmail.trim()),
+      });
       setFeedbackComment('');
     } catch (error) {
       setFeedbackMessage(error instanceof Error ? error.message : t('Failed to submit feedback', '反馈提交失败'));
     } finally {
       setFeedbackSubmitting(false);
     }
-  }, [feedbackComment, feedbackEmail, feedbackRating, feedbackSubmitting, result, t]);
-
+  }, [feedbackComment, feedbackEmail, feedbackRating, feedbackSubmitting, posthog, result, t]);
   return (
     <div className={cn('space-y-6', className)}>
       {/* Tab Switcher */}

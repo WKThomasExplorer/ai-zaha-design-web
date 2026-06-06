@@ -17,6 +17,7 @@ import { Carousel, CarouselApi, CarouselContent, CarouselItem, CarouselNext, Car
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { GLSLHills } from '@/components/ui/glsl-hills';
+import { usePostHog } from 'posthog-js/react';
 
 type AppState = 
   | 'IDLE' 
@@ -34,6 +35,7 @@ const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
 
 export default function HomeDesignPage() {
   const { user, loading, logout } = useAuth();
+  const posthog = usePostHog();
   const [appState, setAppState] = useState<AppState>('IDLE');
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [effectImageUrl, setEffectImageUrl] = useState<string | null>(null);
@@ -195,7 +197,13 @@ export default function HomeDesignPage() {
     setLeadEmail('');
     setLeadMessage(null);
     setAppState('UPLOADED');
-  }, []);
+
+    posthog?.capture('upload_completed', {
+      is_logged_in: Boolean(user),
+      width: image.width,
+      height: image.height,
+    });
+  }, [posthog, user]);
 
   // Generate effect image only
   const generateEffectImage = useCallback(async () => {
@@ -223,6 +231,9 @@ export default function HomeDesignPage() {
     setProgress(0);
 
     try {
+      posthog?.capture('effect_generate_started', {
+        is_anonymous: isAnonymous,
+      });
       setProgress(20);
       const imageBase64 = uploadedImage.preview;
       setProgress(40);
@@ -256,9 +267,16 @@ export default function HomeDesignPage() {
         setProgress(100);
         setEffectImageUrl(effectData.imageUrl);
         setAppState('EFFECT_READY');
+        posthog?.capture('effect_generate_succeeded', {
+          is_anonymous: isAnonymous,
+        });
       }
     } catch (err) {
       console.error('Generation error:', err);
+      posthog?.capture('effect_generate_failed', {
+        is_anonymous: isAnonymous,
+        error: err instanceof Error ? err.message : 'unknown_error',
+      });
       if (effectRequestIdRef.current === requestId) {
         setError(err instanceof Error ? err.message : t('Generation failed', '生成失败'));
         setAppState('ERROR');
@@ -268,8 +286,7 @@ export default function HomeDesignPage() {
         isGeneratingEffectRef.current = false;
       }
     }
-  }, [uploadedImage, turnstileToken, t, user]);
-
+  }, [posthog, uploadedImage, turnstileToken, t, user]);
   // Generate explosion diagram (after user confirms effect image)
   const generateExplosionDiagram = useCallback(async () => {
     if (!effectImageUrl || isGeneratingExplosionRef.current) return;
@@ -341,6 +358,10 @@ export default function HomeDesignPage() {
       if (explosionRequestIdRef.current === requestId) {
         setProgress(100);
 
+        posthog?.capture('explosion_generate_succeeded', {
+          is_logged_in: Boolean(user),
+        });
+
         // Complete with both images
         setGenerationResult({
           effectImageUrl: effectImageUrl,
@@ -352,6 +373,10 @@ export default function HomeDesignPage() {
       }
     } catch (err) {
       console.error('Generation error:', err);
+      posthog?.capture('explosion_generate_failed', {
+        is_logged_in: Boolean(user),
+        error: err instanceof Error ? err.message : 'unknown_error',
+      });
       if (explosionRequestIdRef.current === requestId) {
         setError(err instanceof Error ? err.message : t('Generation failed', '生成失败'));
         setAppState('ERROR');
@@ -361,8 +386,7 @@ export default function HomeDesignPage() {
         isGeneratingExplosionRef.current = false;
       }
     }
-  }, [effectImageUrl, t]);
-
+  }, [effectImageUrl, posthog, t, user]);
   // Listen for description saved event
   useEffect(() => {
     const handleDescriptionSaved = () => {
@@ -408,24 +432,35 @@ export default function HomeDesignPage() {
       }
 
       setLeadMessage(t('Thanks! Explosion diagram is unlocking...', '已收到邮箱，正在为你解锁爆炸图...'));
+      posthog?.capture('lead_unlock_submitted', {
+        source: 'explosion_unlock',
+      });
       generateExplosionDiagram();
     } catch (err) {
+      posthog?.capture('lead_unlock_failed', {
+        source: 'explosion_unlock',
+        error: err instanceof Error ? err.message : 'unknown_error',
+      });
       setLeadMessage(err instanceof Error ? err.message : t('Failed to save your email', '邮箱提交失败'));
     } finally {
       setLeadSubmitting(false);
     }
-  }, [effectImageUrl, generateExplosionDiagram, leadEmail, t]);
-
+  }, [effectImageUrl, generateExplosionDiagram, leadEmail, posthog, t]);
   // Handle confirm and generate explosion
   const handleConfirmEffect = useCallback(() => {
     if (user) {
+      posthog?.capture('explosion_generate_requested', {
+        is_logged_in: true,
+      });
       generateExplosionDiagram();
       return;
     }
 
+    posthog?.capture('unlock_clicked', {
+      source: 'effect_ready',
+    });
     void submitLeadAndGenerateExplosion();
-  }, [generateExplosionDiagram, submitLeadAndGenerateExplosion, user]);
-
+  }, [generateExplosionDiagram, posthog, submitLeadAndGenerateExplosion, user]);
   // Handle start over
   const handleStartOver = useCallback(() => {
     effectRequestIdRef.current += 1;
