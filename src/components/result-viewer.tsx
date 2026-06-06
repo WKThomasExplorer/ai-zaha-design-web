@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package } from 'lucide-react';
+import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { GenerationResult } from '@/types';
@@ -16,9 +16,14 @@ interface ResultViewerProps {
 
 export function ResultViewer({ result, onRegenerate, className, language = 'en' }: ResultViewerProps) {
   const isZh = language === 'zh';
-  const t = (en: string, zh: string) => (isZh ? zh : en);
+  const t = useCallback((en: string, zh: string) => (isZh ? zh : en), [isZh]);
   const [activeTab, setActiveTab] = useState<'effect' | 'explosion'>('effect');
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState<'love_it' | 'needs_changes' | 'not_useful' | null>(null);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackEmail, setFeedbackEmail] = useState('');
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   // Download single file
   const downloadFile = useCallback(async (url: string, filename: string) => {
@@ -120,6 +125,44 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
     }
   }, [result, downloadFile, downloadCSV]);
 
+  const submitFeedback = useCallback(async () => {
+    if (!feedbackRating || feedbackSubmitting) {
+      return;
+    }
+
+    setFeedbackSubmitting(true);
+    setFeedbackMessage(null);
+
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rating: feedbackRating,
+          comment: feedbackComment,
+          email: feedbackEmail,
+          prompt: localStorage.getItem('design_description') || null,
+          effectImageUrl: result.effectImageUrl,
+          explosionImageUrl: result.explosionImageUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || t('Failed to submit feedback', '反馈提交失败'));
+      }
+
+      setFeedbackMessage(t('Thanks for the feedback!', '感谢反馈！'));
+      setFeedbackComment('');
+    } catch (error) {
+      setFeedbackMessage(error instanceof Error ? error.message : t('Failed to submit feedback', '反馈提交失败'));
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  }, [feedbackComment, feedbackEmail, feedbackRating, feedbackSubmitting, result, t]);
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Tab Switcher */}
@@ -214,6 +257,75 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
         )}
         {t('Download Complete Package (Effect + Explosion + Materials CSV)', '下载完整包（效果图 + 爆炸图 + 材料 CSV）')}
       </Button>
+
+      {/* Feedback */}
+      <div className="rounded-xl border border-[#2d2a4a]/10 bg-white/60 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-[#1a1f36]">
+          <MessageSquare className="w-4 h-4 text-[#00d4aa]" />
+          <p className="text-sm font-medium">{t('How useful is this result?', '这个结果对你有帮助吗？')}</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button
+            onClick={() => setFeedbackRating('love_it')}
+            className={cn(
+              'h-10 rounded-lg border text-sm transition-colors',
+              feedbackRating === 'love_it' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-[#2d2a4a]/20 hover:bg-[#f0f0f5]'
+            )}
+          >
+            {t('Love it', '很满意')}
+          </button>
+          <button
+            onClick={() => setFeedbackRating('needs_changes')}
+            className={cn(
+              'h-10 rounded-lg border text-sm transition-colors',
+              feedbackRating === 'needs_changes' ? 'border-amber-500 bg-amber-50 text-amber-700' : 'border-[#2d2a4a]/20 hover:bg-[#f0f0f5]'
+            )}
+          >
+            {t('Needs changes', '需要调整')}
+          </button>
+          <button
+            onClick={() => setFeedbackRating('not_useful')}
+            className={cn(
+              'h-10 rounded-lg border text-sm transition-colors',
+              feedbackRating === 'not_useful' ? 'border-red-500 bg-red-50 text-red-700' : 'border-[#2d2a4a]/20 hover:bg-[#f0f0f5]'
+            )}
+          >
+            {t('Not useful', '帮助不大')}
+          </button>
+        </div>
+
+        {(feedbackRating === 'needs_changes' || feedbackRating === 'not_useful') && (
+          <textarea
+            value={feedbackComment}
+            onChange={(e) => setFeedbackComment(e.target.value)}
+            placeholder={t('Tell us what should be improved...', '请告诉我们哪里需要改进...')}
+            className="w-full min-h-[88px] rounded-lg border border-[#2d2a4a]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
+          />
+        )}
+
+        <input
+          type="email"
+          value={feedbackEmail}
+          onChange={(e) => setFeedbackEmail(e.target.value)}
+          placeholder={t('Optional: your email for follow-up', '可选：留下邮箱便于我们跟进')}
+          className="w-full h-10 rounded-lg border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
+        />
+
+        <Button
+          onClick={submitFeedback}
+          disabled={!feedbackRating || feedbackSubmitting}
+          className="h-10 rounded-lg bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white"
+        >
+          {feedbackSubmitting ? t('Submitting...', '提交中...') : t('Submit Feedback', '提交反馈')}
+        </Button>
+
+        {feedbackMessage && (
+          <p className={cn('text-sm', feedbackMessage.includes('Thanks') || feedbackMessage.includes('感谢') ? 'text-emerald-600' : 'text-red-500')}>
+            {feedbackMessage}
+          </p>
+        )}
+      </div>
 
       {/* Materials List */}
       {result.materials && result.materials.length > 0 && (
