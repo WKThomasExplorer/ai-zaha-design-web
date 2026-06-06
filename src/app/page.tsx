@@ -47,6 +47,9 @@ export default function HomeDesignPage() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileHint, setTurnstileHint] = useState<string | null>(null);
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadSubmitting, setLeadSubmitting] = useState(false);
+  const [leadMessage, setLeadMessage] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance | null>(null);
   const isGeneratingEffectRef = useRef(false);
   const isGeneratingExplosionRef = useRef(false);
@@ -189,6 +192,8 @@ export default function HomeDesignPage() {
   // Handle image upload
   const handleImageUploaded = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
+    setLeadEmail('');
+    setLeadMessage(null);
     setAppState('UPLOADED');
   }, []);
 
@@ -373,10 +378,53 @@ export default function HomeDesignPage() {
     generateEffectImage();
   }, [generateEffectImage]);
 
+  const submitLeadAndGenerateExplosion = useCallback(async () => {
+    const email = leadEmail.trim().toLowerCase();
+    if (!email) {
+      setLeadMessage(t('Please enter your email to unlock explosion diagram.', '请输入邮箱以解锁爆炸图。'));
+      return;
+    }
+
+    setLeadSubmitting(true);
+    setLeadMessage(null);
+
+    try {
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          source: 'explosion_unlock',
+          prompt: localStorage.getItem('design_description') || null,
+          effectImageUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || t('Failed to save your email', '邮箱提交失败'));
+      }
+
+      setLeadMessage(t('Thanks! Explosion diagram is unlocking...', '已收到邮箱，正在为你解锁爆炸图...'));
+      generateExplosionDiagram();
+    } catch (err) {
+      setLeadMessage(err instanceof Error ? err.message : t('Failed to save your email', '邮箱提交失败'));
+    } finally {
+      setLeadSubmitting(false);
+    }
+  }, [effectImageUrl, generateExplosionDiagram, leadEmail, t]);
+
   // Handle confirm and generate explosion
   const handleConfirmEffect = useCallback(() => {
-    generateExplosionDiagram();
-  }, [generateExplosionDiagram]);
+    if (user) {
+      generateExplosionDiagram();
+      return;
+    }
+
+    void submitLeadAndGenerateExplosion();
+  }, [generateExplosionDiagram, submitLeadAndGenerateExplosion, user]);
 
   // Handle start over
   const handleStartOver = useCallback(() => {
@@ -392,6 +440,9 @@ export default function HomeDesignPage() {
     setError(null);
     setTurnstileHint(null);
     setTurnstileToken('');
+    setLeadEmail('');
+    setLeadSubmitting(false);
+    setLeadMessage(null);
     turnstileRef.current?.reset();
     localStorage.removeItem('design_description');
   }, []);
@@ -931,22 +982,54 @@ export default function HomeDesignPage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleRegenerateEffect}
-                    variant="outline"
-                    className="flex-1 h-12 rounded-xl font-medium border-[#2d2a4a]/20 text-[#2d2a4a] hover:bg-[#f0f0f5]"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    {t('Regenerate', '重新生成')}
-                  </Button>
-                  <Button
-                    onClick={handleConfirmEffect}
-                    className="flex-1 h-12 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white"
-                  >
-                    {t('Generate Explosion', '生成爆炸图')}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleRegenerateEffect}
+                      variant="outline"
+                      className="flex-1 h-12 rounded-xl font-medium border-[#2d2a4a]/20 text-[#2d2a4a] hover:bg-[#f0f0f5]"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      {t('Regenerate', '重新生成')}
+                    </Button>
+                    <Button
+                      onClick={handleConfirmEffect}
+                      disabled={!user && leadSubmitting}
+                      className="flex-1 h-12 rounded-xl font-medium transition-all duration-300 bg-gradient-to-r from-[#00d4aa] to-[#0077ff] hover:shadow-lg hover:shadow-[#00d4aa]/30 text-white"
+                    >
+                      {!user ? t('Unlock Explosion & Materials', '解锁爆炸图与材料清单') : t('Generate Explosion', '生成爆炸图')}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+
+                  {!user && (
+                    <div className="rounded-xl border border-[#2d2a4a]/10 bg-white/60 p-4 space-y-3">
+                      <p className="text-sm text-[#2d2a4a]/70">
+                        {t('Enter your email to unlock explosion diagram and materials list for free.', '填写邮箱即可免费解锁爆炸图与材料清单。')}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="email"
+                          value={leadEmail}
+                          onChange={(e) => setLeadEmail(e.target.value)}
+                          placeholder={t('you@example.com', '你的邮箱地址')}
+                          className="flex-1 h-11 rounded-xl border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
+                        />
+                        <Button
+                          onClick={handleConfirmEffect}
+                          disabled={leadSubmitting}
+                          className="h-11 px-5 rounded-xl bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white"
+                        >
+                          {leadSubmitting ? t('Saving...', '提交中...') : t('Unlock Now', '立即解锁')}
+                        </Button>
+                      </div>
+                      {leadMessage && (
+                        <p className={cn('text-sm', leadMessage.includes('unlocking') || leadMessage.includes('已收到') ? 'text-emerald-600' : 'text-red-500')}>
+                          {leadMessage}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

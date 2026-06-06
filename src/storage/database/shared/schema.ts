@@ -39,6 +39,24 @@ export const blogPosts = pgTable(
   ]
 );
 
+export const emailLeads = pgTable(
+  "email_leads",
+  {
+    id: serial("id").primaryKey().notNull(),
+    email: text("email").notNull(),
+    source: text("source").notNull(),
+    prompt: text("prompt"),
+    style: text("style"),
+    effect_image_url: text("effect_image_url"),
+    created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("email_leads_email_idx").on(table.email),
+    index("email_leads_source_idx").on(table.source),
+    index("email_leads_created_at_idx").on(table.created_at),
+  ],
+);
+
 export const generationPackages = pgTable(
   "generation_packages",
   {
@@ -111,3 +129,5 @@ export const generationMaterials = pgTable(
 export type AppUser = typeof users.$inferSelect;
 export type BlogPost = typeof blogPosts.$inferSelect;
 export type InsertBlogPost = typeof blogPosts.$inferInsert;
+export type EmailLead = typeof emailLeads.$inferSelect;
+export type InsertEmailLead = typeof emailLeads.$inferInsert;
