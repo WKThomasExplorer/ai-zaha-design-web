@@ -9,7 +9,8 @@ import {
   Image as ImageIcon, 
   FileText,
   Home,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Overview', href: '/admin', icon: LayoutDashboard },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Generations', href: '/admin/renders', icon: ImageIcon },
+  { name: 'Purchase Intents', href: '/admin/intents', icon: Sparkles },
   { name: 'Blog Posts', href: '/admin/blog-posts', icon: FileText },
 ];
 

@@ -57,6 +57,24 @@ export const emailLeads = pgTable(
   ],
 );
 
+export const purchaseIntents = pgTable(
+  "purchase_intents",
+  {
+    id: serial("id").primaryKey().notNull(),
+    email: text("email"),
+    price: text("price").notNull(),
+    product: text("product").notNull(),
+    prompt: text("prompt"),
+    effect_image_url: text("effect_image_url"),
+    explosion_image_url: text("explosion_image_url"),
+    created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("purchase_intents_price_idx").on(table.price),
+    index("purchase_intents_created_at_idx").on(table.created_at),
+  ],
+);
+
 export const resultFeedback = pgTable(
   "result_feedback",
   {
@@ -151,3 +169,5 @@ export type EmailLead = typeof emailLeads.$inferSelect;
 export type InsertEmailLead = typeof emailLeads.$inferInsert;
 export type ResultFeedback = typeof resultFeedback.$inferSelect;
 export type InsertResultFeedback = typeof resultFeedback.$inferInsert;
+export type PurchaseIntent = typeof purchaseIntents.$inferSelect;
+export type InsertPurchaseIntent = typeof purchaseIntents.$inferInsert;

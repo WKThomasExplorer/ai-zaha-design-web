@@ -20,6 +20,10 @@ interface OverviewData {
     failedTotal: number;
     recentTotal: number;
   };
+  intents: {
+    total: number;
+    recent: number;
+  };
 }
 
 export default function AdminOverview() {
@@ -40,7 +44,7 @@ export default function AdminOverview() {
         } else {
           setError(result.error || 'Failed to load data');
         }
-      } catch (err) {
+      } catch {
         setError('Network error occurred');
       } finally {
         setLoading(false);
@@ -110,6 +114,14 @@ export default function AdminOverview() {
       icon: FileText,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-100',
+    },
+    {
+      name: 'Purchase Intents',
+      value: data?.intents.total || 0,
+      subtext: `+${data?.intents.recent || 0} in last 7 days`,
+      icon: Activity,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100',
     },
     {
       name: 'Failed Tasks',

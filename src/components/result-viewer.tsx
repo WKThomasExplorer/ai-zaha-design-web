@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package, MessageSquare } from 'lucide-react';
+import { Download, RefreshCw, Image as ImageIcon, Layers, FileText, Package, MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { GenerationResult } from '@/types';
@@ -24,6 +24,9 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
   const [feedbackEmail, setFeedbackEmail] = useState('');
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [intentEmail, setIntentEmail] = useState('');
+  const [intentSubmitting, setIntentSubmitting] = useState(false);
+  const [intentMessage, setIntentMessage] = useState<string | null>(null);
 
   // Download single file
   const downloadFile = useCallback(async (url: string, filename: string) => {
@@ -124,6 +127,44 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
       setTimeout(() => setDownloading(null), 500);
     }
   }, [result, downloadFile, downloadCSV]);
+
+  const submitPurchaseIntent = useCallback(async () => {
+    if (intentSubmitting) {
+      return;
+    }
+
+    setIntentSubmitting(true);
+    setIntentMessage(null);
+
+    try {
+      const response = await fetch('/api/purchase-intents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: intentEmail,
+          price: '$19',
+          product: 'hd_unlock_waitlist',
+          prompt: localStorage.getItem('design_description') || null,
+          effectImageUrl: result.effectImageUrl,
+          explosionImageUrl: result.explosionImageUrl,
+        }),
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || t('Failed to save your request', '提交失败'));
+      }
+
+      setIntentMessage(t('Saved! We will email your HD unlock beta access soon.', '已记录！我们会通过邮件发送 HD 解锁测试资格。'));
+      setIntentEmail('');
+    } catch (error) {
+      setIntentMessage(error instanceof Error ? error.message : t('Failed to save your request', '提交失败'));
+    } finally {
+      setIntentSubmitting(false);
+    }
+  }, [intentEmail, intentSubmitting, result, t]);
 
   const submitFeedback = useCallback(async () => {
     if (!feedbackRating || feedbackSubmitting) {
@@ -257,6 +298,38 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
         )}
         {t('Download Complete Package (Effect + Explosion + Materials CSV)', '下载完整包（效果图 + 爆炸图 + 材料 CSV）')}
       </Button>
+
+      {/* Purchase intent fake door */}
+      <div className="rounded-xl border border-[#2d2a4a]/10 bg-white/60 p-4 space-y-3">
+        <div className="flex items-center gap-2 text-[#1a1f36]">
+          <Sparkles className="w-4 h-4 text-[#00d4aa]" />
+          <p className="text-sm font-medium">{t('Unlock HD Package - $19 (Beta Waitlist)', '解锁高清包 - $19（内测候补）')}</p>
+        </div>
+        <p className="text-sm text-[#2d2a4a]/70">
+          {t('Includes high-resolution images, no watermark output, and commercial-ready package.', '包含高清图片、无水印输出、以及可商用展示包。')}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="email"
+            value={intentEmail}
+            onChange={(e) => setIntentEmail(e.target.value)}
+            placeholder={t('your@email.com (optional)', '你的邮箱（可选）')}
+            className="flex-1 h-10 rounded-lg border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
+          />
+          <Button
+            onClick={submitPurchaseIntent}
+            disabled={intentSubmitting}
+            className="h-10 rounded-lg bg-gradient-to-r from-[#00d4aa] to-[#0077ff] text-white"
+          >
+            {intentSubmitting ? t('Saving...', '提交中...') : t('Join Unlock Waitlist', '加入解锁候补')}
+          </Button>
+        </div>
+        {intentMessage && (
+          <p className={cn('text-sm', intentMessage.includes('Saved!') || intentMessage.includes('已记录') ? 'text-emerald-600' : 'text-red-500')}>
+            {intentMessage}
+          </p>
+        )}
+      </div>
 
       {/* Feedback */}
       <div className="rounded-xl border border-[#2d2a4a]/10 bg-white/60 p-4 space-y-3">

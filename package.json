@@ -11,6 +11,7 @@
     "ts-check": "tsc -p tsconfig.json",
     "db:migrate:user-email": "tsx scripts/apply-user-email-migration.ts",
     "db:migrate:leads-feedback": "tsx scripts/apply-leads-feedback-migration.ts",
+    "db:migrate:purchase-intents": "tsx scripts/apply-purchase-intents-migration.ts",
     "test:register-welcome": "tsx scripts/test-register-welcome.ts"
   },
   "dependencies": {
