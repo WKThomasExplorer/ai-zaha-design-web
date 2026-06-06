@@ -7,7 +7,9 @@ import {
   Layers, 
   FileText, 
   Activity,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +22,8 @@ interface OverviewData {
     failedTotal: number;
     recentTotal: number;
   };
+  leads: { total: number };
+  feedback: { total: number };
   intents: {
     total: number;
     recent: number;
@@ -116,12 +120,28 @@ export default function AdminOverview() {
       bgColor: 'bg-indigo-100',
     },
     {
+      name: 'Leads',
+      value: data?.leads.total || 0,
+      subtext: 'Emails collected',
+      icon: Mail,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100',
+    },
+    {
+      name: 'Feedback',
+      value: data?.feedback.total || 0,
+      subtext: 'Result quality responses',
+      icon: MessageSquare,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-100',
+    },
+    {
       name: 'Purchase Intents',
       value: data?.intents.total || 0,
       subtext: `+${data?.intents.recent || 0} in last 7 days`,
       icon: Activity,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-100',
+      color: 'text-sky-600',
+      bgColor: 'bg-sky-100',
     },
     {
       name: 'Failed Tasks',

@@ -10,7 +10,9 @@ import {
   FileText,
   Home,
   LogOut,
-  Sparkles
+  Sparkles,
+  Mail,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
@@ -18,6 +20,8 @@ const navigation = [
   { name: 'Overview', href: '/admin', icon: LayoutDashboard },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Generations', href: '/admin/renders', icon: ImageIcon },
+  { name: 'Leads', href: '/admin/leads', icon: Mail },
+  { name: 'Feedback', href: '/admin/feedback', icon: MessageSquare },
   { name: 'Purchase Intents', href: '/admin/intents', icon: Sparkles },
   { name: 'Blog Posts', href: '/admin/blog-posts', icon: FileText },
 ];

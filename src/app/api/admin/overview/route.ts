@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/storage/database/db';
-import { users, blogPosts, generationRuns, purchaseIntents } from '@/storage/database/shared/schema';
+import { users, blogPosts, generationRuns, purchaseIntents, emailLeads, resultFeedback } from '@/storage/database/shared/schema';
 import { count, eq, sql } from 'drizzle-orm';
 import * as jose from 'jose';
 
@@ -72,7 +72,11 @@ export async function GET(request: NextRequest) {
       .from(generationRuns)
       .where(sql`${generationRuns.created_at} > now() - interval '7 days'`);
 
-    // 4. Purchase intent metrics
+    // 4. Lead and feedback metrics
+    const [leadTotal] = await db.select({ count: count() }).from(emailLeads);
+    const [feedbackTotal] = await db.select({ count: count() }).from(resultFeedback);
+
+    // 5. Purchase intent metrics
     const [intentTotal] = await db.select({ count: count() }).from(purchaseIntents);
     const [intentRecent] = await db
       .select({ count: count() })
@@ -94,6 +98,12 @@ export async function GET(request: NextRequest) {
           explosionTotal: explosionCount.count,
           failedTotal: failedCount.count,
           recentTotal: recentGenerations.count,
+        },
+        leads: {
+          total: leadTotal.count,
+        },
+        feedback: {
+          total: feedbackTotal.count,
         },
         intents: {
           total: intentTotal.count,
