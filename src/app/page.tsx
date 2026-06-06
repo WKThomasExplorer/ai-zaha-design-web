@@ -1046,6 +1046,8 @@ export default function HomeDesignPage() {
                         <input
                           type="email"
                           value={leadEmail}
+                          data-hj-suppress
+                          data-clarity-mask="true"
                           onChange={(e) => setLeadEmail(e.target.value)}
                           placeholder={t('you@example.com', '你的邮箱地址')}
                           className="flex-1 h-11 rounded-xl border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"

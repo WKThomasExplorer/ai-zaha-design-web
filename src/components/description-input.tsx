@@ -424,6 +424,8 @@ export function DescriptionInput({ onSubmit, className, language = 'en' }: Descr
         <Textarea
           ref={textareaRef}
           value={value}
+          data-hj-suppress
+          data-clarity-mask="true"
           onChange={(e) => setValue(e.target.value.slice(0, maxChars))}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}

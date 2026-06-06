@@ -323,6 +323,8 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
           <input
             type="email"
             value={intentEmail}
+            data-hj-suppress
+            data-clarity-mask="true"
             onChange={(e) => setIntentEmail(e.target.value)}
             placeholder={t('your@email.com (optional)', '你的邮箱（可选）')}
             className="flex-1 h-10 rounded-lg border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
@@ -382,6 +384,8 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
         {(feedbackRating === 'needs_changes' || feedbackRating === 'not_useful') && (
           <textarea
             value={feedbackComment}
+            data-hj-suppress
+            data-clarity-mask="true"
             onChange={(e) => setFeedbackComment(e.target.value)}
             placeholder={t('Tell us what should be improved...', '请告诉我们哪里需要改进...')}
             className="w-full min-h-[88px] rounded-lg border border-[#2d2a4a]/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
@@ -391,6 +395,8 @@ export function ResultViewer({ result, onRegenerate, className, language = 'en' 
         <input
           type="email"
           value={feedbackEmail}
+          data-hj-suppress
+          data-clarity-mask="true"
           onChange={(e) => setFeedbackEmail(e.target.value)}
           placeholder={t('Optional: your email for follow-up', '可选：留下邮箱便于我们跟进')}
           className="w-full h-10 rounded-lg border border-[#2d2a4a]/20 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d4aa]/30"
